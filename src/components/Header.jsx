@@ -1,4 +1,4 @@
-export default function Header({ activeProject, projects, activeId, onSwitchProject }) {
+export default function Header({ activeProject, projects, activeId, onSwitchProject, onSignOut }) {
   return (
     <div className="sticky top-0 bg-stone-50 border-b border-stone-200 px-4 py-3 flex items-center gap-2 z-10">
       <span className="text-xl shrink-0">🏗️</span>
@@ -27,6 +27,9 @@ export default function Header({ activeProject, projects, activeId, onSwitchProj
           ))}
         </select>
       )}
+      <button onClick={onSignOut} className="text-xs text-stone-400 shrink-0">
+        Έξοδος
+      </button>
     </div>
   )
 }

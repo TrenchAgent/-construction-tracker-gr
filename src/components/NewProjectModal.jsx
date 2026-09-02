@@ -4,13 +4,22 @@ export default function NewProjectModal({ onClose, onCreate }) {
   const [name, setName] = useState('')
   const [location, setLocation] = useState('')
   const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!name.trim()) {
       setError('Δώστε όνομα έργου')
       return
     }
-    onCreate({ name: name.trim(), location: location.trim() })
+    setBusy(true)
+    setError('')
+    try {
+      await onCreate({ name: name.trim(), location: location.trim() })
+      onClose() // unmounts this component — don't touch state after this
+    } catch (err) {
+      setError(err.message || 'Κάτι πήγε στραβά, δοκιμάστε ξανά')
+      setBusy(false)
+    }
   }
 
   return (
@@ -39,9 +48,10 @@ export default function NewProjectModal({ onClose, onCreate }) {
         {error && <div className="text-xs text-rose-600 mb-2">{error}</div>}
         <button
           onClick={handleCreate}
-          className="w-full bg-orange-700 text-white rounded-xl py-2.5 font-medium text-sm mt-1"
+          disabled={busy}
+          className="w-full bg-orange-700 text-white rounded-xl py-2.5 font-medium text-sm mt-1 disabled:opacity-60"
         >
-          Δημιουργία έργου
+          {busy ? 'Δημιουργία…' : 'Δημιουργία έργου'}
         </button>
       </div>
     </div>

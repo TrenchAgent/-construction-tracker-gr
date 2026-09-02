@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Supabase keys — never commit real credentials, even the "anon" key.
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

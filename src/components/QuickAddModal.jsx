@@ -14,12 +14,13 @@ const emptyForm = () => ({
 export default function QuickAddModal({ onClose, onSave }) {
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
 
   function update(patch) {
     setForm((f) => ({ ...f, ...patch }))
   }
 
-  function handleSave() {
+  async function handleSave() {
     const amt = parseFloat(form.amount)
     if (!form.amount || Number.isNaN(amt) || amt <= 0) {
       setError('Δώστε έγκυρο ποσό')
@@ -30,15 +31,23 @@ export default function QuickAddModal({ onClose, onSave }) {
       return
     }
     const final = form.kind === 'expense' && form.vat ? amt * (1 + VAT_RATE) : amt
-    onSave({
-      kind: form.kind,
-      category: form.kind === 'expense' ? form.category : 'Είσπραξη',
-      vendor: form.vendor.trim(),
-      note: form.note.trim(),
-      amount: Math.round(final * 100) / 100,
-      vat: form.vat,
-      date: form.date,
-    })
+    setBusy(true)
+    setError('')
+    try {
+      await onSave({
+        kind: form.kind,
+        category: form.kind === 'expense' ? form.category : 'Είσπραξη',
+        vendor: form.vendor.trim(),
+        note: form.note.trim(),
+        amount: Math.round(final * 100) / 100,
+        vat: form.vat,
+        date: form.date,
+      })
+      onClose() // unmounts this component — don't touch state after this
+    } catch (err) {
+      setError(err.message || 'Κάτι πήγε στραβά, δοκιμάστε ξανά')
+      setBusy(false)
+    }
   }
 
   return (
@@ -153,9 +162,10 @@ export default function QuickAddModal({ onClose, onSave }) {
         {error && <div className="text-xs text-rose-600 mb-2">{error}</div>}
         <button
           onClick={handleSave}
-          className="w-full bg-orange-700 text-white rounded-xl py-2.5 font-medium text-sm"
+          disabled={busy}
+          className="w-full bg-orange-700 text-white rounded-xl py-2.5 font-medium text-sm disabled:opacity-60"
         >
-          Αποθήκευση
+          {busy ? 'Αποθήκευση…' : 'Αποθήκευση'}
         </button>
       </div>
     </div>

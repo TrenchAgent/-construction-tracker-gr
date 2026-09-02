@@ -1,47 +1,78 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Header from './components/Header'
 import EmptyState from './components/EmptyState'
 import DashboardSummary from './components/DashboardSummary'
 import EntryList from './components/EntryList'
 import NewProjectModal from './components/NewProjectModal'
 import QuickAddModal from './components/QuickAddModal'
-import { getProjects, saveProjects, getEntries, saveEntries } from './lib/storage'
+import * as storage from './lib/storage'
 
-export default function App() {
-  const [projects, setProjects] = useState(() => getProjects())
-  const [activeId, setActiveId] = useState(() => {
-    const list = getProjects()
-    return list.length ? list[0].id : null
-  })
-  const [entries, setEntries] = useState(() => getEntries(activeId))
+export default function App({ onSignOut }) {
+  const [projects, setProjects] = useState([])
+  const [activeId, setActiveId] = useState(null)
+  const [entries, setEntries] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [showNewProject, setShowNewProject] = useState(false)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
 
-  function switchProject(id) {
+  // Initial load, once, on sign-in. (App only mounts once AuthGate has a
+  // session, so there's no need to react to auth state changes here.)
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const list = await storage.getProjects()
+        if (cancelled) return
+        setProjects(list)
+        if (list.length) {
+          setActiveId(list[0].id)
+          const entryList = await storage.getEntries(list[0].id)
+          if (cancelled) return
+          setEntries(entryList)
+        }
+      } catch (err) {
+        if (!cancelled) setError(err.message || 'Σφάλμα φόρτωσης δεδομένων')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function switchProject(id) {
     setActiveId(id)
-    setEntries(getEntries(id))
+    try {
+      setEntries(await storage.getEntries(id))
+    } catch (err) {
+      setError(err.message || 'Σφάλμα φόρτωσης καταχωρήσεων')
+    }
   }
 
-  function createProject({ name, location }) {
-    const project = { id: 'p_' + Date.now(), name, location }
-    const list = [project, ...projects]
-    setProjects(list)
-    saveProjects(list)
-    switchProject(project.id)
-    setShowNewProject(false)
+  // Throws on failure — NewProjectModal awaits this and shows the error
+  // itself, so the modal stays open with what the user typed.
+  async function createProject({ name, location }) {
+    const project = await storage.addProject({ name, location })
+    setProjects((list) => [project, ...list])
+    await switchProject(project.id)
   }
 
-  function addEntry(entry) {
-    const list = [{ id: 'e_' + Date.now(), ...entry }, ...entries]
-    setEntries(list)
-    saveEntries(activeId, list)
-    setShowQuickAdd(false)
+  // Same contract: throws on failure, QuickAddModal displays it.
+  async function addEntry(entry) {
+    const saved = await storage.addEntry(activeId, entry)
+    setEntries((list) => [saved, ...list])
   }
 
-  function deleteEntry(id) {
-    const list = entries.filter((e) => e.id !== id)
-    setEntries(list)
-    saveEntries(activeId, list)
+  async function deleteEntry(id) {
+    try {
+      await storage.deleteEntry(id)
+      setEntries((list) => list.filter((e) => e.id !== id))
+    } catch (err) {
+      setError(err.message || 'Η διαγραφή απέτυχε')
+    }
   }
 
   const income = entries.filter((e) => e.kind === 'income').reduce((s, e) => s + e.amount, 0)
@@ -49,16 +80,34 @@ export default function App() {
   const profit = income - expense
   const activeProject = projects.find((p) => p.id === activeId)
 
+  if (loading) {
+    return (
+      <div className="max-w-md mx-auto min-h-screen bg-stone-50 flex items-center justify-center text-stone-400 text-sm">
+        Φόρτωση…
+      </div>
+    )
+  }
+
   return (
     <div
       className="max-w-md mx-auto bg-stone-50 min-h-screen text-stone-900"
       style={{ fontFamily: 'system-ui, sans-serif' }}
     >
+      {error && (
+        <div className="bg-rose-50 text-rose-700 text-xs px-4 py-2 flex items-center gap-2 border-b border-rose-200">
+          <span className="flex-1">{error}</span>
+          <button onClick={() => setError('')} className="text-rose-400 shrink-0">
+            ×
+          </button>
+        </div>
+      )}
+
       <Header
         activeProject={activeProject}
         projects={projects}
         activeId={activeId}
         onSwitchProject={switchProject}
+        onSignOut={onSignOut}
       />
 
       {!activeProject ? (
@@ -96,9 +145,7 @@ export default function App() {
         <NewProjectModal onClose={() => setShowNewProject(false)} onCreate={createProject} />
       )}
 
-      {showQuickAdd && (
-        <QuickAddModal onClose={() => setShowQuickAdd(false)} onSave={addEntry} />
-      )}
+      {showQuickAdd && <QuickAddModal onClose={() => setShowQuickAdd(false)} onSave={addEntry} />}
     </div>
   )
 }

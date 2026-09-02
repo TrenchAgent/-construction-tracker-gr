@@ -1,56 +1,93 @@
 // ---------------------------------------------------------------------------
-// ⚠️ TEMPORARY STORAGE — READ THIS BEFORE DEPLOYING PUBLICLY
+// All persistence goes through this file — components never talk to
+// Supabase directly. That's the one part of the original localStorage
+// design that's unchanged.
 //
-// Everything here lives in the browser's localStorage. That means:
-//   - Data does NOT sync between devices (phone and laptop see different data).
-//   - Data is lost if the user clears their browser data, or on some phones,
-//     when they reinstall the app / free up storage.
-//   - Nothing is backed up anywhere.
+// What DID change, and why: localStorage reads/writes are instant and
+// synchronous. Supabase calls are network requests — they're asynchronous
+// by nature, so every function here now returns a Promise and the two old
+// "save the whole array back" functions (saveProjects/saveEntries) are gone.
+// They were a fine shortcut for a JSON blob in localStorage, but replaying
+// them against a shared database would mean literally deleting and
+// re-inserting every row on every change — on two devices that race, that
+// silently loses data (see the PR/commit description for the concrete
+// scenario). Add/delete map onto real database operations instead, and the
+// two call sites in App.jsx are simpler for it, not more complex.
 //
-// This is fine for trying the app out and for a single-device demo. It is
-// NOT fine as the permanent storage for a real business tracking real money.
-// Before this app is used on more than one device (or the data matters),
-// swap this module for a real backend — Supabase is a good fit (free tier,
-// Postgres, works well with a Vite/React app). The functions below
-// (getProjects/saveProjects/getEntries/saveEntries) are the only place that
-// needs to change — every component calls through this module, never
-// localStorage directly.
+// Every table has Row Level Security enabled (see supabase/schema.sql) —
+// Supabase automatically scopes every query in here to the signed-in user,
+// so there's no manual "user_id" filtering to get wrong on the client.
 // ---------------------------------------------------------------------------
 
-const PROJECTS_KEY = 'csm_projects'
-const entriesKey = (projectId) => `csm_entries_${projectId}`
+import { supabase } from './supabaseClient'
 
-function readJSON(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : fallback
-  } catch {
-    return fallback
+function mapProject(row) {
+  return { id: row.id, name: row.name, location: row.location || '' }
+}
+
+function mapEntry(row) {
+  return {
+    id: row.id,
+    kind: row.kind,
+    category: row.category,
+    vendor: row.vendor || '',
+    note: row.note,
+    amount: Number(row.amount),
+    vat: row.vat,
+    date: row.date,
   }
 }
 
-function writeJSON(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value))
-  } catch {
-    // Storage full or unavailable (e.g. private browsing) — fail silently,
-    // the UI still works for the current session.
-  }
+export async function getProjects() {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data.map(mapProject)
 }
 
-export function getProjects() {
-  return readJSON(PROJECTS_KEY, [])
+export async function addProject({ name, location }) {
+  const { data, error } = await supabase
+    .from('projects')
+    .insert({ name, location: location || null })
+    .select()
+    .single()
+  if (error) throw error
+  return mapProject(data)
 }
 
-export function saveProjects(projects) {
-  writeJSON(PROJECTS_KEY, projects)
-}
-
-export function getEntries(projectId) {
+export async function getEntries(projectId) {
   if (!projectId) return []
-  return readJSON(entriesKey(projectId), [])
+  const { data, error } = await supabase
+    .from('entries')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data.map(mapEntry)
 }
 
-export function saveEntries(projectId, entries) {
-  writeJSON(entriesKey(projectId), entries)
+export async function addEntry(projectId, entry) {
+  const { data, error } = await supabase
+    .from('entries')
+    .insert({
+      project_id: projectId,
+      kind: entry.kind,
+      category: entry.category,
+      vendor: entry.vendor || null,
+      note: entry.note,
+      amount: entry.amount,
+      vat: entry.vat,
+      date: entry.date,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return mapEntry(data)
+}
+
+export async function deleteEntry(id) {
+  const { error } = await supabase.from('entries').delete().eq('id', id)
+  if (error) throw error
 }
