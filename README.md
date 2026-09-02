@@ -20,9 +20,20 @@ up on your phone and your laptop.
 
 Because that's a shared database reachable from any browser, it needs to
 know who's asking — that's what the sign-in screen is for. There's still
-no password to remember: type your email, get a 6-digit code, type it in.
-See **Setting up Supabase** below to create your own free project — this
-app does not come with one already configured.
+no password to remember: type your email, then open the email and tap the
+sign-in link it contains — that brings you back here, signed in. See
+**Setting up Supabase** below to create your own free project — this app
+does not come with one already configured.
+
+One known edge case worth knowing about: if the app is installed to an
+iPhone/iPad home screen, tapping that email link can sometimes open Safari
+instead of the installed app, leaving the installed app itself still
+signed out. If that happens, sign in once directly in Safari at the live
+URL — Android and desktop aren't affected. (The alternative — a typed
+one-time code instead of a link, which sidesteps this entirely — needs a
+custom SMTP provider connected to Supabase, since its free built-in email
+sender only sends its fixed default templates. Worth doing later if this
+edge case actually bites; not required to get going now.)
 
 All the database code lives in one file, `src/lib/storage.js` — components
 never talk to Supabase directly.
@@ -32,7 +43,7 @@ never talk to Supabase directly.
 **Included:** projects (name + optional location), quick-add entries
 (income or expense, amount, optional VAT 24%, optional vendor, required
 note, date), a dashboard with income/expense/profit totals, and a
-reverse-chronological entry list with delete. Sign-in is by email code,
+reverse-chronological entry list with delete. Sign-in is by emailed link,
 no password.
 
 **Deliberately cut for v1** (don't add back without checking this is
@@ -57,7 +68,7 @@ src/
   components/
     AuthGate.jsx                shows LoginScreen or the app, based on
                                  whether there's a signed-in session
-    LoginScreen.jsx              email + 6-digit code sign-in form
+    LoginScreen.jsx              email sign-in form (sends the link)
     Header.jsx                   top bar, project switcher, sign-out
     EmptyState.jsx                "no project yet" screen
     DashboardSummary.jsx          income/expense/profit cards
@@ -103,22 +114,18 @@ contents, paste into the editor, and click **Run**. You should see
 "Success. No rows returned." This created the `projects` and `entries`
 tables and locked them so each account can only ever see its own data.
 
-**4. Make the sign-in email show a code, not just a link.** In the left
-sidebar: **Authentication → Emails → Magic Link**. Replace the template's
-body with something like:
+**4. Allow the app's URLs to receive the sign-in link.** In the left
+sidebar: **Authentication → URL Configuration**. Under **Redirect URLs**,
+add both of these (one per line, click **Add URL** for each):
 
-```html
-<h2>Ο κωδικός σας</h2>
-<p>Ο κωδικός σύνδεσης για το Διαχείριση Έργου είναι:</p>
-<h1>{{ .Token }}</h1>
-<p>Ισχύει για λίγα λεπτά.</p>
+```
+https://unique-douhua-1e8149.netlify.app/**
+http://localhost:5173/**
 ```
 
-Click **Save**. (Why this step matters: the default template only shows a
-clickable link, but if this app is installed to your phone's home screen,
-that link can open in your regular browser instead of the installed app —
-leaving the installed app still logged out. A typed code sidesteps that
-entirely.)
+Click **Save**. Without this, Supabase will refuse to send you back to the
+app after you click the sign-in link (it only redirects to URLs you've
+explicitly allowed — a real security check, not red tape).
 
 **5. Get your API keys.** Left sidebar: **Project Settings → API**. You
 need two values from this page:
