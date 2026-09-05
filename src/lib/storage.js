@@ -87,7 +87,44 @@ export async function addEntry(projectId, entry) {
   return mapEntry(data)
 }
 
+export async function updateEntry(id, entry) {
+  const { data, error } = await supabase
+    .from('entries')
+    .update({
+      kind: entry.kind,
+      category: entry.category,
+      vendor: entry.vendor || null,
+      note: entry.note,
+      amount: entry.amount,
+      vat: entry.vat,
+      date: entry.date,
+    })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return mapEntry(data)
+}
+
 export async function deleteEntry(id) {
   const { error } = await supabase.from('entries').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function updateProject(id, { name, location }) {
+  const { data, error } = await supabase
+    .from('projects')
+    .update({ name, location: location || null })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return mapProject(data)
+}
+
+// Cascades to that project's entries automatically — see the "on delete
+// cascade" foreign key on entries.project_id in supabase/schema.sql.
+export async function deleteProject(id) {
+  const { error } = await supabase.from('projects').delete().eq('id', id)
   if (error) throw error
 }

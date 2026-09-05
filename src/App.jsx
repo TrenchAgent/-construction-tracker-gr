@@ -5,6 +5,7 @@ import DashboardSummary from './components/DashboardSummary'
 import EntryList from './components/EntryList'
 import NewProjectModal from './components/NewProjectModal'
 import QuickAddModal from './components/QuickAddModal'
+import ProjectSettingsModal from './components/ProjectSettingsModal'
 import * as storage from './lib/storage'
 
 export default function App({ onSignOut }) {
@@ -15,6 +16,8 @@ export default function App({ onSignOut }) {
   const [error, setError] = useState('')
   const [showNewProject, setShowNewProject] = useState(false)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [editingEntry, setEditingEntry] = useState(null)
+  const [showProjectSettings, setShowProjectSettings] = useState(false)
 
   // Initial load, once, on sign-in. (App only mounts once AuthGate has a
   // session, so there's no need to react to auth state changes here.)
@@ -60,10 +63,27 @@ export default function App({ onSignOut }) {
     await switchProject(project.id)
   }
 
-  // Same contract: throws on failure, QuickAddModal displays it.
-  async function addEntry(entry) {
-    const saved = await storage.addEntry(activeId, entry)
-    setEntries((list) => [saved, ...list])
+  // Same contract: throws on failure, QuickAddModal displays it. Handles
+  // both add and edit — which one depends on whether editingEntry is set
+  // when the modal was opened (see openQuickAdd/openEditEntry below).
+  async function saveEntry(fields) {
+    if (editingEntry) {
+      const saved = await storage.updateEntry(editingEntry.id, fields)
+      setEntries((list) => list.map((e) => (e.id === saved.id ? saved : e)))
+    } else {
+      const saved = await storage.addEntry(activeId, fields)
+      setEntries((list) => [saved, ...list])
+    }
+  }
+
+  function openQuickAdd() {
+    setEditingEntry(null)
+    setShowQuickAdd(true)
+  }
+
+  function openEditEntry(entry) {
+    setEditingEntry(entry)
+    setShowQuickAdd(true)
   }
 
   async function deleteEntry(id) {
@@ -72,6 +92,25 @@ export default function App({ onSignOut }) {
       setEntries((list) => list.filter((e) => e.id !== id))
     } catch (err) {
       setError(err.message || 'Η διαγραφή απέτυχε')
+    }
+  }
+
+  // Throws on failure — ProjectSettingsModal displays it.
+  async function updateProject(fields) {
+    const saved = await storage.updateProject(activeId, fields)
+    setProjects((list) => list.map((p) => (p.id === saved.id ? saved : p)))
+  }
+
+  // Throws on failure — ProjectSettingsModal displays it.
+  async function removeProject() {
+    await storage.deleteProject(activeId)
+    const remaining = projects.filter((p) => p.id !== activeId)
+    setProjects(remaining)
+    if (remaining.length) {
+      await switchProject(remaining[0].id)
+    } else {
+      setActiveId(null)
+      setEntries([])
     }
   }
 
@@ -107,6 +146,7 @@ export default function App({ onSignOut }) {
         projects={projects}
         activeId={activeId}
         onSwitchProject={switchProject}
+        onOpenProjectSettings={() => setShowProjectSettings(true)}
         onSignOut={onSignOut}
       />
 
@@ -126,13 +166,13 @@ export default function App({ onSignOut }) {
             </button>
           </div>
 
-          <EntryList entries={entries} onDelete={deleteEntry} />
+          <EntryList entries={entries} onEdit={openEditEntry} onDelete={deleteEntry} />
         </div>
       )}
 
       {activeProject && (
         <button
-          onClick={() => setShowQuickAdd(true)}
+          onClick={openQuickAdd}
           className="fixed bottom-5 right-5 bg-orange-700 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center text-2xl leading-none"
           style={{ maxWidth: '28rem' }}
           aria-label="Νέα καταχώρηση"
@@ -145,7 +185,22 @@ export default function App({ onSignOut }) {
         <NewProjectModal onClose={() => setShowNewProject(false)} onCreate={createProject} />
       )}
 
-      {showQuickAdd && <QuickAddModal onClose={() => setShowQuickAdd(false)} onSave={addEntry} />}
+      {showQuickAdd && (
+        <QuickAddModal
+          onClose={() => setShowQuickAdd(false)}
+          onSave={saveEntry}
+          editingEntry={editingEntry}
+        />
+      )}
+
+      {showProjectSettings && activeProject && (
+        <ProjectSettingsModal
+          project={activeProject}
+          onClose={() => setShowProjectSettings(false)}
+          onSave={updateProject}
+          onDelete={removeProject}
+        />
+      )}
     </div>
   )
 }

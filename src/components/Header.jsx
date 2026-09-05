@@ -1,4 +1,11 @@
-export default function Header({ activeProject, projects, activeId, onSwitchProject, onSignOut }) {
+export default function Header({
+  activeProject,
+  projects,
+  activeId,
+  onSwitchProject,
+  onOpenProjectSettings,
+  onSignOut,
+}) {
   return (
     <div className="sticky top-0 bg-stone-50 border-b border-stone-200 px-4 py-3 flex items-center gap-2 z-10">
       <span className="text-xl shrink-0">🏗️</span>
@@ -14,6 +21,15 @@ export default function Header({ activeProject, projects, activeId, onSwitchProj
           <div className="font-semibold">Διαχείριση Έργου</div>
         )}
       </div>
+      {activeProject && (
+        <button
+          onClick={onOpenProjectSettings}
+          className="text-stone-400 shrink-0"
+          aria-label="Ρυθμίσεις έργου"
+        >
+          ✎
+        </button>
+      )}
       {projects.length > 1 && (
         <select
           className="text-xs border border-stone-300 rounded-lg px-2 py-1 bg-white max-w-[110px]"

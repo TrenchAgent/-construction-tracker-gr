@@ -11,8 +11,27 @@ const emptyForm = () => ({
   date: new Date().toISOString().slice(0, 10),
 })
 
-export default function QuickAddModal({ onClose, onSave }) {
-  const [form, setForm] = useState(emptyForm)
+// editingEntry: pass an existing entry to edit it in place instead of
+// creating a new one. Note on VAT in edit mode: the stored `amount` is
+// already the final, VAT-inclusive value (that's what's on disk — see
+// storage.js), so editing doesn't re-run the VAT calculation or let you
+// toggle it. You're editing the actual total, e.g. to fix a typo. To
+// change whether VAT applies to an entry, delete it and add it again.
+export default function QuickAddModal({ onClose, onSave, editingEntry }) {
+  const isEditing = Boolean(editingEntry)
+  const [form, setForm] = useState(() =>
+    isEditing
+      ? {
+          kind: editingEntry.kind,
+          category: editingEntry.kind === 'expense' ? editingEntry.category : EXPENSE_CATEGORIES[0],
+          vendor: editingEntry.vendor,
+          note: editingEntry.note,
+          amount: String(editingEntry.amount),
+          vat: editingEntry.vat,
+          date: editingEntry.date,
+        }
+      : emptyForm(),
+  )
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -30,7 +49,9 @@ export default function QuickAddModal({ onClose, onSave }) {
       setError('Προσθέστε μια σύντομη σημείωση')
       return
     }
-    const final = form.kind === 'expense' && form.vat ? amt * (1 + VAT_RATE) : amt
+    // Only apply the VAT markup when creating — in edit mode `amt` is
+    // already the final stored amount (see the note above the component).
+    const final = !isEditing && form.kind === 'expense' && form.vat ? amt * (1 + VAT_RATE) : amt
     setBusy(true)
     setError('')
     try {
@@ -40,7 +61,10 @@ export default function QuickAddModal({ onClose, onSave }) {
         vendor: form.vendor.trim(),
         note: form.note.trim(),
         amount: Math.round(final * 100) / 100,
-        vat: form.vat,
+        // Income never carries VAT — matters in edit mode, where switching
+        // an expense (possibly vat: true) to income could otherwise leave
+        // a stale VAT flag on a row that no longer has a category for it.
+        vat: form.kind === 'expense' ? form.vat : false,
         date: form.date,
       })
       onClose() // unmounts this component — don't touch state after this
@@ -57,7 +81,9 @@ export default function QuickAddModal({ onClose, onSave }) {
         style={{ maxHeight: '85vh', overflowY: 'auto' }}
       >
         <div className="flex items-center mb-4">
-          <h3 className="font-semibold">Νέα καταχώρηση</h3>
+          <h3 className="font-semibold">
+            {isEditing ? 'Επεξεργασία καταχώρησης' : 'Νέα καταχώρηση'}
+          </h3>
           <button onClick={onClose} className="ml-auto text-stone-400 text-lg">
             ×
           </button>
@@ -110,7 +136,9 @@ export default function QuickAddModal({ onClose, onSave }) {
           </>
         )}
 
-        <label className="block text-xs text-stone-500 mb-1">Ποσό (€) *</label>
+        <label className="block text-xs text-stone-500 mb-1">
+          Ποσό (€) {isEditing && form.kind === 'expense' && form.vat ? '— τελικό, με ΦΠΑ' : ''} *
+        </label>
         <input
           type="number"
           inputMode="decimal"
@@ -140,16 +168,24 @@ export default function QuickAddModal({ onClose, onSave }) {
           onChange={(e) => update({ note: e.target.value })}
         />
 
-        {form.kind === 'expense' && (
-          <label className="flex items-center gap-2 mb-3 text-sm">
-            <input
-              type="checkbox"
-              checked={form.vat}
-              onChange={(e) => update({ vat: e.target.checked })}
-            />
-            Προσθήκη ΦΠΑ 24%
-          </label>
-        )}
+        {form.kind === 'expense' &&
+          (isEditing ? (
+            form.vat && (
+              <p className="text-xs text-stone-400 mb-3">
+                Το ΦΠΑ 24% ήταν ενεργό όταν δημιουργήθηκε — για να το αλλάξετε,
+                διαγράψτε την καταχώρηση και προσθέστε τη ξανά.
+              </p>
+            )
+          ) : (
+            <label className="flex items-center gap-2 mb-3 text-sm">
+              <input
+                type="checkbox"
+                checked={form.vat}
+                onChange={(e) => update({ vat: e.target.checked })}
+              />
+              Προσθήκη ΦΠΑ 24%
+            </label>
+          ))}
 
         <label className="block text-xs text-stone-500 mb-1">Ημερομηνία</label>
         <input

@@ -29,30 +29,44 @@ One known edge case worth knowing about: if the app is installed to an
 iPhone/iPad home screen, tapping that email link can sometimes open Safari
 instead of the installed app, leaving the installed app itself still
 signed out. If that happens, sign in once directly in Safari at the live
-URL — Android and desktop aren't affected. (The alternative — a typed
-one-time code instead of a link, which sidesteps this entirely — needs a
-custom SMTP provider connected to Supabase, since its free built-in email
-sender only sends its fixed default templates. Worth doing later if this
-edge case actually bites; not required to get going now.)
+URL — Android and desktop aren't affected.
+
+Sign-in emails are sent via [Resend](https://resend.com) (custom SMTP
+connected to Supabase — see **Authentication → Emails** in the Supabase
+dashboard for that config), not Supabase's own default sender: the
+built-in one is capped at a very low rate limit meant only for quick
+testing, which is worth knowing if sign-in suddenly starts failing with
+"email rate limit exceeded" — that means something's reverted to it.
+Since the sending address (`onboarding@resend.dev`) isn't a verified
+domain, first-time emails can land in spam — mark them "not spam" once
+and it settles down.
 
 All the database code lives in one file, `src/lib/storage.js` — components
 never talk to Supabase directly.
 
 ## What's in v1 (and what's deliberately left out)
 
-**Included:** projects (name + optional location), quick-add entries
-(income or expense, amount, optional VAT 24%, optional vendor, required
-note, date), a dashboard with income/expense/profit totals, and a
-reverse-chronological entry list with delete. Sign-in is by emailed link,
-no password.
+**Included:** projects (name + optional location, editable, deletable —
+deleting a project deletes its entries too), quick-add entries (income or
+expense, amount, optional VAT 24%, optional vendor, required note, date),
+editable and deletable individual entries, a dashboard with
+income/expense/profit totals, and a reverse-chronological entry list.
+Sign-in is by emailed link, no password.
+
+One real limitation in entry editing, not hidden: the database only
+stores the final amount (VAT already applied, if it was on) — not the
+pre-VAT number you originally typed. So editing an entry lets you correct
+the final amount, but doesn't let you flip its VAT flag or recompute from
+a new pre-VAT number; to change whether VAT applies, delete the entry and
+add it again.
 
 **Deliberately cut for v1** (don't add back without checking this is
 still wanted): tax ID (ΑΦΜ) capture, receipt photos, payment
 method/status tracking, a transportation cost field, rate analysis,
 overheads, work-area tagging, finer-grained material categories, labour
-headcount/day-rate tracking, and multi-user sharing of one project (every
-signed-in email has its own private set of projects — nothing is shared
-between accounts yet).
+headcount/day-rate tracking, report export (CSV/PDF), and multi-user
+sharing of one project (every signed-in email has its own private set of
+projects — nothing is shared between accounts yet).
 
 ## Project structure
 
@@ -72,9 +86,13 @@ src/
     Header.jsx                   top bar, project switcher, sign-out
     EmptyState.jsx                "no project yet" screen
     DashboardSummary.jsx          income/expense/profit cards
-    EntryList.jsx                  the list of entries with delete
+    EntryList.jsx                  the entry list — tap a row to edit,
+                                    "Διαγραφή" to delete
     NewProjectModal.jsx            "create project" bottom sheet
-    QuickAddModal.jsx              "add entry" bottom sheet
+    ProjectSettingsModal.jsx        rename/relocate or delete the active
+                                     project (✎ icon in the header)
+    QuickAddModal.jsx              "add entry" bottom sheet — also handles
+                                    editing an existing entry
 public/
   icon.svg, icon-192.png, icon-512.png   app icons (used by the PWA manifest)
 supabase/
@@ -127,13 +145,16 @@ Click **Save**. Without this, Supabase will refuse to send you back to the
 app after you click the sign-in link (it only redirects to URLs you've
 explicitly allowed — a real security check, not red tape).
 
-**5. Get your API keys.** Left sidebar: **Project Settings → API**. You
-need two values from this page:
-   - **Project URL** (looks like `https://xxxxxxxxxxxx.supabase.co`)
-   - **anon / public** key (a long string starting with `eyJ`) — this one
-     is safe to use in frontend code, it's meant to be public. **Never**
-     copy the `service_role` key anywhere in this app — that one bypasses
-     all the access rules `schema.sql` set up.
+**5. Get your API keys.** Left sidebar: **Project Settings → API Keys**.
+You need two values from this page:
+   - **Project URL** — under General settings, or derived from your
+     project ref: `https://<project-ref>.supabase.co`
+   - **Publishable key** (starts with `sb_publishable_...` — older
+     projects instead show a legacy **anon / public** key starting with
+     `eyJ`; either works the same way) — this one is safe to use in
+     frontend code, it's meant to be public. **Never** copy a **Secret
+     key** (`sb_secret_...`) or the legacy `service_role` key anywhere in
+     this app — those bypass all the access rules `schema.sql` set up.
 
 Keep this browser tab open — you'll paste both values into two places
 next: your own machine (to run it locally) and Netlify (where it's
@@ -203,3 +224,7 @@ locally.
   office and a site foreman), that needs a small "invite a collaborator"
   feature on top of what's here — right now every signed-in email is
   fully isolated from every other one.
+- Verifying a real domain in Resend would fix sign-in emails landing in
+  spam and lift the "only delivers to your own signup address" limit on
+  the shared `onboarding@resend.dev` sender — not needed for a single
+  user, worth doing before other people sign in.

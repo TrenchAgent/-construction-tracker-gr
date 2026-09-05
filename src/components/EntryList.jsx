@@ -1,7 +1,7 @@
 import { CATEGORY_BADGE_STYLES } from '../constants'
 import { formatEUR } from '../lib/format'
 
-export default function EntryList({ entries, onDelete }) {
+export default function EntryList({ entries, onEdit, onDelete }) {
   if (entries.length === 0) {
     return (
       <div className="text-sm text-stone-400 text-center py-10">
@@ -17,7 +17,7 @@ export default function EntryList({ entries, onDelete }) {
           key={e.id}
           className="bg-white border border-stone-200 rounded-xl p-3 flex items-start gap-3"
         >
-          <div className="flex-1 min-w-0">
+          <button onClick={() => onEdit(e)} className="flex-1 min-w-0 text-left">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               {e.kind === 'expense' ? (
                 <span
@@ -44,7 +44,7 @@ export default function EntryList({ entries, onDelete }) {
               {e.vendor ? e.vendor + ' · ' : ''}
               {e.date}
             </div>
-          </div>
+          </button>
           <div className="text-right shrink-0">
             <div
               className={
