@@ -181,6 +181,26 @@ in test mode. Do that one manual click-through yourself at some point
 (`4242 4242 4242 4242`, any future expiry, any CVC) as the final sanity
 check of Stripe's side of the flow.
 
+## Public landing page
+
+`public/landing.html` is a plain static page (no React, no build step of
+its own — Vite just copies it as-is) explaining what the app is, aimed at
+someone who's never seen it before, with a sign-up call to action. Live at
+**unique-douhua-1e8149.netlify.app/landing** (the `/landing` →
+`/landing.html` redirect is in `netlify.toml`).
+
+Deliberately kept separate from `/`, which still is (and stays) the app
+itself, unchanged — sign in, dashboard, everything. This was a deliberate
+choice, not an oversight: making the landing page the new root would also
+mean moving the app to some other path, which touches the PWA's
+`start_url` (what opens when someone taps the already-installed home
+screen icon), the Stripe Checkout success/cancel URLs, and anyone's
+existing bookmark to the bare domain — a bigger, riskier change than "a
+page exists that explains the product," and not something to do as a side
+effect. If you'd rather the marketing page be the front door at `/` with
+the app moved to e.g. `/app`, that's a reasonable next step, just a
+deliberate one — ask for it explicitly.
+
 ## Project structure
 
 ```

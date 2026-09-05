@@ -5,3 +5,11 @@
 
 [functions]
   node_bundler = "esbuild"
+
+# A nicer URL for the public marketing page (public/landing.html) — this
+# is a plain static redirect, it doesn't touch how the app itself (at "/")
+# is served, so it can't affect the app's existing routing.
+[[redirects]]
+  from = "/landing"
+  to = "/landing.html"
+  status = 200

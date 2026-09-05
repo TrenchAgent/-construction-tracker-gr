@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="el">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#c2410c" />
+    <meta
+      name="description"
+      content="Καταγραφή εσόδων και εξόδων ανά έργο για μηχανικούς και εργολάβους — απλά, από το κινητό, χωρίς Excel."
+    />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <title>Διαχείριση Έργου — Καταγραφή εξόδων εργοταξίου</title>
+    <style>
+      :root {
+        --orange: #c2410c;
+        --orange-dark: #9a3412;
+        --stone-50: #fafaf9;
+        --stone-100: #f5f5f4;
+        --stone-200: #e7e5e4;
+        --stone-400: #a8a29e;
+        --stone-600: #57534e;
+        --stone-900: #1c1917;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: var(--stone-50);
+        color: var(--stone-900);
+        line-height: 1.5;
+      }
+      .wrap {
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 0 20px 48px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 20px 0;
+        font-weight: 700;
+        font-size: 15px;
+      }
+      header .logo {
+        font-size: 22px;
+      }
+      .hero {
+        padding: 28px 0 8px;
+      }
+      .hero h1 {
+        font-size: 28px;
+        line-height: 1.25;
+        margin: 0 0 12px;
+      }
+      .hero p {
+        color: var(--stone-600);
+        font-size: 15px;
+        margin: 0 0 24px;
+      }
+      .cta {
+        display: block;
+        text-align: center;
+        background: var(--orange);
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 16px;
+        padding: 14px;
+        border-radius: 14px;
+        box-shadow: 0 4px 14px rgba(194, 65, 12, 0.25);
+      }
+      .cta:active {
+        background: var(--orange-dark);
+      }
+      .subnote {
+        text-align: center;
+        color: var(--stone-400);
+        font-size: 12px;
+        margin: 10px 0 0;
+      }
+      .features {
+        margin-top: 40px;
+        display: grid;
+        gap: 12px;
+      }
+      .feature {
+        background: white;
+        border: 1px solid var(--stone-200);
+        border-radius: 16px;
+        padding: 16px;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .feature .icon {
+        font-size: 22px;
+        line-height: 1;
+      }
+      .feature h3 {
+        font-size: 14px;
+        margin: 0 0 4px;
+      }
+      .feature p {
+        font-size: 13px;
+        color: var(--stone-600);
+        margin: 0;
+      }
+      .who {
+        margin-top: 40px;
+        background: var(--stone-100);
+        border-radius: 16px;
+        padding: 18px 16px;
+        font-size: 14px;
+        color: var(--stone-600);
+      }
+      .who strong {
+        color: var(--stone-900);
+      }
+      footer {
+        margin-top: 40px;
+        text-align: center;
+        font-size: 12px;
+        color: var(--stone-400);
+      }
+      footer a {
+        color: var(--stone-600);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <span class="logo">🏗️</span>
+        <span>Διαχείριση Έργου</span>
+      </header>
+
+      <section class="hero">
+        <h1>Τα έξοδα του εργοταξίου, χωρίς Excel και χαμένα χαρτάκια.</h1>
+        <p>
+          Καταγράψτε έσοδα και έξοδα ανά έργο από το κινητό σας, σε δευτερόλεπτα — με ΦΠΑ,
+          κατηγορίες υλικών/εργατικών, και κέρδος/ζημία σε πραγματικό χρόνο.
+        </p>
+        <a class="cta" href="/">Ξεκινήστε δωρεάν →</a>
+        <p class="subnote">Σύνδεση με email, χωρίς κωδικό πρόσβασης.</p>
+      </section>
+
+      <section class="features">
+        <div class="feature">
+          <span class="icon">📊</span>
+          <div>
+            <h3>Ένα dashboard ανά έργο</h3>
+            <p>Έσοδα, έξοδα και κέρδος/ζημία με μια ματιά, ξεχωριστά για κάθε εργοτάξιο.</p>
+          </div>
+        </div>
+        <div class="feature">
+          <span class="icon">🧾</span>
+          <div>
+            <h3>ΦΠΑ και κατηγορίες</h3>
+            <p>Προσθήκη ΦΠΑ 24% με ένα κλικ, κατηγοριοποίηση σε Υλικά / Εργατικά / Λοιπά.</p>
+          </div>
+        </div>
+        <div class="feature">
+          <span class="icon">📶</span>
+          <div>
+            <h3>Δουλεύει και χωρίς σήμα</h3>
+            <p>
+              Προσθέστε καταχωρήσεις ακόμα κι όταν δεν έχετε σύνδεση — συγχρονίζονται αυτόματα
+              μόλις επανέλθει το δίκτυο.
+            </p>
+          </div>
+        </div>
+        <div class="feature">
+          <span class="icon">📤</span>
+          <div>
+            <h3>Εξαγωγή σε Excel</h3>
+            <p>Λήψη όλων των καταχωρήσεων ενός έργου σε CSV, έτοιμο για τον λογιστή σας.</p>
+          </div>
+        </div>
+        <div class="feature">
+          <span class="icon">🤝</span>
+          <div>
+            <h3>Συνεργασία στο έργο</h3>
+            <p>Προσκαλέστε συνεργάτη σε συγκεκριμένο έργο, με δικαίωμα προβολής ή επεξεργασίας.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="who">
+        Φτιαγμένο για <strong>μηχανικούς, εργολάβους και κατασκευαστές</strong> που θέλουν να
+        ξέρουν πού πάει το κάθε ευρώ σε κάθε έργο — χωρίς λογιστικό πρόγραμμα, χωρίς πολύπλοκα
+        Excel.
+      </section>
+
+      <a class="cta" style="margin-top: 28px" href="/">Δοκιμάστε το τώρα →</a>
+
+      <footer>
+        Εγκαθίσταται σαν εφαρμογή στο κινητό, χωρίς κατάστημα εφαρμογών.<br />
+        Ήδη έχετε λογαριασμό; <a href="/">Συνδεθείτε εδώ</a>.
+      </footer>
+    </div>
+  </body>
+</html>
