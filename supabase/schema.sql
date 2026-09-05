@@ -8,8 +8,8 @@
 -- code (and its Supabase key) is publicly visible in the browser.
 --
 -- Safe to re-run: table creation is guarded with "if not exists" and every
--- policy is dropped and recreated, so running this again (e.g. after a
--- schema.sql update) just applies whatever changed.
+-- policy/function is dropped and recreated, so running this again (e.g.
+-- after a schema.sql update) just applies whatever changed.
 
 create table if not exists projects (
   id uuid primary key default gen_random_uuid(),
@@ -62,6 +62,51 @@ alter table entries enable row level security;
 alter table project_collaborators enable row level security;
 
 -- ---------------------------------------------------------------------
+-- Helper functions — SECURITY DEFINER, so they bypass RLS *internally*
+-- for this one lookup, running as the function's owner rather than the
+-- calling user.
+--
+-- Why these exist at all: projects' policy needs to check
+-- project_collaborators (is this user a collaborator?), and
+-- project_collaborators' policy needs to check projects (is this user
+-- the owner?). Written as plain subqueries directly inside each policy,
+-- that's a cycle — evaluating one triggers the other, which triggers the
+-- first again — and Postgres's own recursion guard rejects every query
+-- on either table with "infinite recursion detected in policy" (caught
+-- this via the adversarial test itself: it failed loudly, not subtly).
+-- Routing the cross-table check through a SECURITY DEFINER function
+-- breaks the cycle, since the function's internal query isn't subject to
+-- the RLS that's currently being evaluated on the caller's behalf.
+-- ---------------------------------------------------------------------
+
+create or replace function is_project_owner(target_project_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from projects p
+    where p.id = target_project_id
+    and p.user_id = auth.uid()
+  );
+$$;
+
+create or replace function my_project_role(target_project_id uuid)
+returns text
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select role from project_collaborators pc
+  where pc.project_id = target_project_id
+  and lower(auth.email()) = pc.email
+  limit 1;
+$$;
+
+-- ---------------------------------------------------------------------
 -- projects
 -- ---------------------------------------------------------------------
 
@@ -79,13 +124,7 @@ create policy "own projects only" on projects
 drop policy if exists "collaborators can view project" on projects;
 create policy "collaborators can view project" on projects
   for select
-  using (
-    exists (
-      select 1 from project_collaborators pc
-      where pc.project_id = projects.id
-      and lower(auth.email()) = pc.email
-    )
-  );
+  using (my_project_role(id) is not null);
 
 -- ---------------------------------------------------------------------
 -- entries — authorization here is entirely project-based (owner, or a
@@ -102,12 +141,8 @@ drop policy if exists "entries visible to project members" on entries;
 create policy "entries visible to project members" on entries
   for select
   using (
-    exists (select 1 from projects p where p.id = entries.project_id and p.user_id = auth.uid())
-    or exists (
-      select 1 from project_collaborators pc
-      where pc.project_id = entries.project_id
-      and lower(auth.email()) = pc.email
-    )
+    is_project_owner(project_id)
+    or my_project_role(project_id) is not null
   );
 
 -- Covers insert/update/delete. Note this also re-checks project_id on
@@ -119,22 +154,12 @@ drop policy if exists "entries editable by owner and editors" on entries;
 create policy "entries editable by owner and editors" on entries
   for all
   using (
-    exists (select 1 from projects p where p.id = entries.project_id and p.user_id = auth.uid())
-    or exists (
-      select 1 from project_collaborators pc
-      where pc.project_id = entries.project_id
-      and lower(auth.email()) = pc.email
-      and pc.role = 'editor'
-    )
+    is_project_owner(project_id)
+    or my_project_role(project_id) = 'editor'
   )
   with check (
-    exists (select 1 from projects p where p.id = entries.project_id and p.user_id = auth.uid())
-    or exists (
-      select 1 from project_collaborators pc
-      where pc.project_id = entries.project_id
-      and lower(auth.email()) = pc.email
-      and pc.role = 'editor'
-    )
+    is_project_owner(project_id)
+    or my_project_role(project_id) = 'editor'
   );
 
 -- ---------------------------------------------------------------------
@@ -146,16 +171,13 @@ create policy "entries editable by owner and editors" on entries
 drop policy if exists "owner manages collaborators" on project_collaborators;
 create policy "owner manages collaborators" on project_collaborators
   for all
-  using (exists (select 1 from projects p where p.id = project_collaborators.project_id and p.user_id = auth.uid()))
-  with check (exists (select 1 from projects p where p.id = project_collaborators.project_id and p.user_id = auth.uid()));
+  using (is_project_owner(project_id))
+  with check (is_project_owner(project_id));
 
--- A collaborator can see their OWN invitation row. This isn't just a nice
--- self-service touch — it's load-bearing: the policies above check
--- project_collaborators via a subquery, and Postgres RLS applies to that
--- subquery too. Without this, a collaborator's subquery would see zero
--- rows in project_collaborators (even their own), and every check above
--- would silently evaluate false — access would look "granted" by the
--- invite row's existence but never actually work.
+-- A collaborator can see their OWN invitation row (self-lookup by email,
+-- not routed through the helper function above — this is the one place
+-- that intentionally stays a direct check, since it's what the helper
+-- function itself relies on internally).
 drop policy if exists "collaborator sees own invite" on project_collaborators;
 create policy "collaborator sees own invite" on project_collaborators
   for select
