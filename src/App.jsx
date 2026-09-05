@@ -6,8 +6,14 @@ import EntryList from './components/EntryList'
 import NewProjectModal from './components/NewProjectModal'
 import QuickAddModal from './components/QuickAddModal'
 import ProjectSettingsModal from './components/ProjectSettingsModal'
+import AccountModal from './components/AccountModal'
 import * as storage from './lib/storage'
 import { entriesToCsv, slugifyFilename, downloadCsv } from './lib/csv'
+
+// Read once at module load, before anything strips it from the URL —
+// Stripe Checkout redirects back to /?checkout=success or
+// /?checkout=cancelled (see create-checkout-session.js).
+const checkoutParam = new URLSearchParams(window.location.search).get('checkout')
 
 // Attaches a `role` to each project: 'owner' if the current user created
 // it, otherwise whatever role their collaborator invite grants. This is
@@ -32,6 +38,16 @@ export default function App({ session, onSignOut }) {
   const [showQuickAdd, setShowQuickAdd] = useState(false)
   const [editingEntry, setEditingEntry] = useState(null)
   const [showProjectSettings, setShowProjectSettings] = useState(false)
+  const [showAccount, setShowAccount] = useState(checkoutParam === 'success')
+
+  // Clean the ?checkout=... param out of the URL once, on mount, so a
+  // page refresh doesn't re-trigger the "just checked out" polling logic
+  // in AccountModal.
+  useEffect(() => {
+    if (checkoutParam) {
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+  }, [])
 
   // Initial load, once, on sign-in. (App only mounts once AuthGate has a
   // session, so there's no need to react to auth state changes here.)
@@ -183,6 +199,7 @@ export default function App({ session, onSignOut }) {
         activeId={activeId}
         onSwitchProject={switchProject}
         onOpenProjectSettings={() => setShowProjectSettings(true)}
+        onOpenAccount={() => setShowAccount(true)}
         onSignOut={onSignOut}
       />
 
@@ -244,6 +261,14 @@ export default function App({ session, onSignOut }) {
           onLoadCollaborators={loadCollaborators}
           onInviteCollaborator={inviteCollaborator}
           onRemoveCollaborator={removeCollaboratorById}
+        />
+      )}
+
+      {showAccount && (
+        <AccountModal
+          email={session.user.email}
+          justCheckedOut={checkoutParam === 'success'}
+          onClose={() => setShowAccount(false)}
         />
       )}
     </div>

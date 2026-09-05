@@ -182,3 +182,28 @@ drop policy if exists "collaborator sees own invite" on project_collaborators;
 create policy "collaborator sees own invite" on project_collaborators
   for select
   using (lower(auth.email()) = email);
+
+-- ---------------------------------------------------------------------
+-- subscriptions — one row per user, written only by the Stripe webhook
+-- (netlify/functions/stripe-webhook.js), which uses the service_role key
+-- and so bypasses RLS entirely. There is deliberately no insert/update/
+-- delete policy for regular users below: from the browser, this table is
+-- effectively read-only. A user can see their own billing status; only
+-- the webhook — driven by what Stripe actually reports — can change it.
+-- ---------------------------------------------------------------------
+
+create table if not exists subscriptions (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  stripe_customer_id text,
+  stripe_subscription_id text,
+  status text not null default 'none',
+  current_period_end timestamptz,
+  updated_at timestamptz not null default now()
+);
+
+alter table subscriptions enable row level security;
+
+drop policy if exists "users see own subscription" on subscriptions;
+create policy "users see own subscription" on subscriptions
+  for select
+  using (auth.uid() = user_id);

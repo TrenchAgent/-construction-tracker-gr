@@ -4,6 +4,7 @@ export default function Header({
   activeId,
   onSwitchProject,
   onOpenProjectSettings,
+  onOpenAccount,
   onSignOut,
 }) {
   return (
@@ -50,6 +51,13 @@ export default function Header({
           ))}
         </select>
       )}
+      <button
+        onClick={onOpenAccount}
+        className="text-stone-400 shrink-0"
+        aria-label="Λογαριασμός"
+      >
+        👤
+      </button>
       <button onClick={onSignOut} className="text-xs text-stone-400 shrink-0">
         Έξοδος
       </button>
