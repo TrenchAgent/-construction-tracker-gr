@@ -43,8 +43,24 @@ create policy "own projects only" on projects
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+-- WITH CHECK also verifies the referenced project belongs to the same
+-- user, not just that the entry row itself does — without this, a
+-- signed-in user could INSERT an entry with someone else's project_id
+-- (their own user_id keeps the row itself compliant, so a check limited
+-- to auth.uid() = user_id alone doesn't catch it). Confirmed by direct
+-- testing before this fix: a second account could attach a row to a
+-- project it didn't own. It never became visible to the project's real
+-- owner (every SELECT is still scoped by user_id), but it's still a
+-- cross-tenant write that shouldn't be possible.
 drop policy if exists "own entries only" on entries;
 create policy "own entries only" on entries
   for all
   using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from projects p
+      where p.id = entries.project_id
+      and p.user_id = auth.uid()
+    )
+  );
