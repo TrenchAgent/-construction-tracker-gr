@@ -50,8 +50,9 @@ never talk to Supabase directly.
 deleting a project deletes its entries too), quick-add entries (income or
 expense, amount, optional VAT 24%, optional vendor, required note, date),
 editable and deletable individual entries, a dashboard with
-income/expense/profit totals, and a reverse-chronological entry list.
-Sign-in is by emailed link, no password.
+income/expense/profit totals, a reverse-chronological entry list, CSV
+export per project, and inviting a collaborator (viewer or editor) to a
+specific project by email. Sign-in is by emailed link, no password.
 
 One real limitation in entry editing, not hidden: the database only
 stores the final amount (VAT already applied, if it was on) — not the
@@ -63,18 +64,38 @@ add it again.
 **Deliberately cut for v1** (don't add back without checking this is
 still wanted): tax ID (ΑΦΜ) capture, receipt photos, payment
 method/status tracking, a transportation cost field, rate analysis,
-overheads, work-area tagging, finer-grained material categories, labour
-headcount/day-rate tracking, report export (CSV/PDF), and multi-user
-sharing of one project (every signed-in email has its own private set of
-projects — nothing is shared between accounts yet).
+overheads, work-area tagging, and finer-grained material categories.
+
+## Sharing a project (collaborators)
+
+A project owner can share a project with someone else's email, at either
+**Προβολή** (view-only) or **Επεξεργασία** (can add/edit/delete entries,
+including entries someone else added — same model as an editor on a
+shared document, not "only their own additions"). Neither role can
+rename/delete the project or manage who else has access — that stays
+owner-only.
+
+No separate invite flow: the collaborator just needs to sign in with that
+exact email (case-insensitive) at some point — the existing magic-link
+sign-in *is* the acceptance step, automatically, the next time they load
+the app. This is enforced by the database (Row Level Security), not the
+app's JavaScript, and was adversarially tested with three real accounts
+before being considered done: a collaborator genuinely cannot see or
+touch any other project, an editor cannot rename the project or add
+other collaborators, a viewer cannot write anything, and removing a
+collaborator revokes their access on their very next request — not just
+in their UI, and not only after they next log in.
 
 ## Project structure
 
 ```
 src/
   App.jsx                    top-level state (projects, entries) and layout
-  constants.js                expense categories, VAT rate
+  constants.js                expense categories, VAT rate, collaborator
+                               role labels
   lib/format.js                € currency formatting (el-GR locale)
+  lib/csv.js                   builds the CSV export (Greek headers, BOM,
+                                semicolon delimiter for Excel)
   lib/supabaseClient.js        creates the Supabase client from env vars
   lib/storage.js               ALL database access goes through here —
                                 components never import supabaseClient
@@ -83,22 +104,28 @@ src/
     AuthGate.jsx                shows LoginScreen or the app, based on
                                  whether there's a signed-in session
     LoginScreen.jsx              email sign-in form (sends the link)
-    Header.jsx                   top bar, project switcher, sign-out
+    Header.jsx                   top bar, project switcher, sign-out,
+                                  "Συνεργασία" badge on shared projects
     EmptyState.jsx                "no project yet" screen
     DashboardSummary.jsx          income/expense/profit cards
     EntryList.jsx                  the entry list — tap a row to edit,
-                                    "Διαγραφή" to delete
+                                    "Διαγραφή" to delete (hidden entirely
+                                    for viewer-role collaborators)
     NewProjectModal.jsx            "create project" bottom sheet
-    ProjectSettingsModal.jsx        rename/relocate or delete the active
-                                     project (✎ icon in the header)
+    ProjectSettingsModal.jsx        owner: rename/relocate, delete, CSV
+                                     export, manage collaborators.
+                                     non-owner: CSV export + role info
+                                     only (✎ icon in the header)
     QuickAddModal.jsx              "add entry" bottom sheet — also handles
                                     editing an existing entry
 public/
   icon.svg, icon-192.png, icon-512.png   app icons (used by the PWA manifest)
 supabase/
   schema.sql                  run once in the Supabase SQL Editor — creates
-                               the projects/entries tables and their
-                               Row Level Security policies
+                               the projects/entries/project_collaborators
+                               tables, their Row Level Security policies,
+                               and the two SECURITY DEFINER helper
+                               functions those policies rely on
 vite.config.js                Vite + Tailwind + PWA plugin configuration
 .env.example                  which env vars the app needs (copy to
                                .env.local and fill in real values — never
@@ -129,8 +156,12 @@ it offers, and fill in:
 **3. Create the tables.** In the left sidebar, open **SQL Editor** → **New
 query**. Open `supabase/schema.sql` from this repo, copy its entire
 contents, paste into the editor, and click **Run**. You should see
-"Success. No rows returned." This created the `projects` and `entries`
-tables and locked them so each account can only ever see its own data.
+"Success. No rows returned." This created the tables and locked them down
+with Row Level Security so each account can only ever see its own data
+(and whatever's been explicitly shared with it — see **Sharing a
+project** above). Safe to re-run any time `schema.sql` changes — it's
+idempotent, so re-running an old copy or the current one both just
+converge on the same state.
 
 **4. Allow the app's URLs to receive the sign-in link.** In the left
 sidebar: **Authentication → URL Configuration**. Under **Redirect URLs**,
@@ -220,10 +251,6 @@ locally.
 ## Roadmap notes
 
 - Everything in "deliberately cut for v1" above, only if actually needed.
-- If more than one person ever needs to see the *same* project (e.g. an
-  office and a site foreman), that needs a small "invite a collaborator"
-  feature on top of what's here — right now every signed-in email is
-  fully isolated from every other one.
 - Verifying a real domain in Resend would fix sign-in emails landing in
   spam and lift the "only delivers to your own signup address" limit on
   the shared `onboarding@resend.dev` sender — not needed for a single
