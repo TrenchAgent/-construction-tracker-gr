@@ -32,8 +32,11 @@ export default function LoginScreen() {
     <div className="max-w-md mx-auto min-h-screen bg-stone-50 flex flex-col items-center justify-center px-6 text-stone-900">
       <div className="text-4xl mb-3">🏗️</div>
       <h1 className="font-semibold text-lg mb-1">Διαχείριση Έργου</h1>
-      <p className="text-sm text-stone-500 mb-6 text-center">
+      <p className="text-sm text-stone-500 mb-1 text-center">
         Συνδεθείτε με το email σας για να βλέπετε τα έργα σας σε κάθε συσκευή.
+      </p>
+      <p className="text-xs text-stone-400 mb-6 text-center">
+        Πρώτη φορά εδώ; Ο λογαριασμός σας δημιουργείται αυτόματα.
       </p>
 
       <div className="w-full bg-white border border-stone-200 rounded-xl p-5">
