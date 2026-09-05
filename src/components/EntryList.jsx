@@ -13,6 +13,11 @@ export default function EntryList({ entries, canEdit, onEdit, onDelete }) {
   return (
     <div className="space-y-2">
       {entries.map((e) => {
+        // A not-yet-synced (or failed-to-sync) entry only exists locally —
+        // there's no real row to edit yet, so tapping it to open the edit
+        // form isn't offered. Deleting it is still fine either way (see
+        // App.jsx's deleteEntry): that just drops it from the local queue.
+        const rowCanEdit = canEdit && !e.pendingSync && !e.syncFailed
         const details = (
           <>
             <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -35,6 +40,16 @@ export default function EntryList({ entries, canEdit, onEdit, onDelete }) {
                   με ΦΠΑ
                 </span>
               )}
+              {e.pendingSync && (
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                  📶 θα συγχρονιστεί όταν επανέλθει το δίκτυο
+                </span>
+              )}
+              {e.syncFailed && (
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">
+                  ⚠ απέτυχε η αποστολή
+                </span>
+              )}
             </div>
             <div className="text-sm truncate">{e.note}</div>
             <div className="text-xs text-stone-400 mt-0.5">
@@ -48,7 +63,7 @@ export default function EntryList({ entries, canEdit, onEdit, onDelete }) {
             key={e.id}
             className="bg-white border border-stone-200 rounded-xl p-3 flex items-start gap-3"
           >
-            {canEdit ? (
+            {rowCanEdit ? (
               <button onClick={() => onEdit(e)} className="flex-1 min-w-0 text-left">
                 {details}
               </button>

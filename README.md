@@ -66,6 +66,37 @@ still wanted): tax ID (ΑΦΜ) capture, receipt photos, payment
 method/status tracking, a transportation cost field, rate analysis,
 overheads, work-area tagging, and finer-grained material categories.
 
+## Working with no signal (offline entries)
+
+Construction sites often have bad or no signal. Adding a new expense or
+income entry works even with no connection: it appears in the list
+immediately, tagged **📶 θα συγχρονιστεί όταν επανέλθει το δίκτυο** ("will
+sync when the connection returns"), and a small banner at the top shows
+how many entries are waiting. The moment the device gets a connection
+back, those entries are sent to the database automatically — no "retry"
+button anywhere, nothing to remember to do.
+
+This is deliberately narrow in scope — **only adding a new entry** works
+offline. Editing or deleting an entry, creating/renaming/deleting a
+project, and managing collaborators all still need a live connection,
+because those act on a row that (from the device's point of view) may or
+may not still exist or look the way it did last time it had a connection;
+reconciling that safely is a meaningfully harder problem than "here's one
+new line item to add" and wasn't attempted. A queued entry itself *can*
+still be deleted before it syncs (e.g. you made a mistake) — that just
+drops it from the local queue, nothing to undo server-side.
+
+Mechanically: queued entries live in the browser's local storage (see
+`src/lib/outbox.js`), scoped to your account, so they survive a page
+reload or the tab being closed while still offline. The app retries the
+queue when the browser reports the connection came back, and once more
+immediately on load in case there was already a leftover queue from a
+previous offline session. If a queued entry is ever rejected by the
+server for a real reason (not just "no connection") — e.g. access to that
+project was revoked while the device was offline — it's flagged **⚠
+απέτυχε η αποστολή** ("failed to send") instead of retried forever, so it
+stays visibly unsaved rather than quietly vanishing.
+
 ## Sharing a project (collaborators)
 
 A project owner can share a project with someone else's email, at either
@@ -164,6 +195,9 @@ src/
   lib/storage.js               ALL database access goes through here —
                                 components never import supabaseClient
                                 directly
+  lib/outbox.js                 the offline queue for "add entry" writes
+                                 made with no connection (see Offline
+                                 support above)
   components/
     AuthGate.jsx                shows LoginScreen or the app, based on
                                  whether there's a signed-in session

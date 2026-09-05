@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Header from './components/Header'
 import EmptyState from './components/EmptyState'
 import DashboardSummary from './components/DashboardSummary'
@@ -8,7 +8,22 @@ import QuickAddModal from './components/QuickAddModal'
 import ProjectSettingsModal from './components/ProjectSettingsModal'
 import AccountModal from './components/AccountModal'
 import * as storage from './lib/storage'
+import * as outbox from './lib/outbox'
 import { entriesToCsv, slugifyFilename, downloadCsv } from './lib/csv'
+
+// A network-layer failure (no connection at all) looks different from a
+// real server rejection (bad data, RLS denial, etc.) — supabase-js's
+// underlying fetch call throws something like "Failed to fetch" (Chrome),
+// "NetworkError when attempting to fetch resource" (Firefox), or "Load
+// failed" (Safari) when it can't even reach the server. Checking
+// navigator.onLine first covers the common case cheaply; this is the
+// fallback for a request that was already in flight when the connection
+// dropped.
+function isLikelyOffline(err) {
+  if (!navigator.onLine) return true
+  const msg = String(err?.message || '').toLowerCase()
+  return msg.includes('failed to fetch') || msg.includes('network') || msg.includes('load failed')
+}
 
 // Read once at module load, before anything strips it from the URL —
 // Stripe Checkout redirects back to /?checkout=success or
@@ -39,6 +54,77 @@ export default function App({ session, onSignOut }) {
   const [editingEntry, setEditingEntry] = useState(null)
   const [showProjectSettings, setShowProjectSettings] = useState(false)
   const [showAccount, setShowAccount] = useState(checkoutParam === 'success')
+  const [pendingCount, setPendingCount] = useState(0)
+
+  // flushOutbox (below) is called from the 'online' event listener, which
+  // can fire long after the render that registered it — a plain closure
+  // over activeId would see whatever project was active back then, not
+  // whatever's active now. A ref sidesteps that without re-registering
+  // the listener on every project switch.
+  const activeIdRef = useRef(activeId)
+  useEffect(() => {
+    activeIdRef.current = activeId
+  }, [activeId])
+
+  // Any entries queued locally for this project (added while offline,
+  // not yet synced) go at the top, shown immediately, ahead of whatever
+  // storage.getEntries() already knows about.
+  function mergeQueuedIntoEntries(projectId, freshEntries) {
+    const queued = outbox.loadQueue(session.user.id).filter((item) => item.projectId === projectId)
+    const placeholders = queued.map((item) => ({ ...item.entry, id: item.localId, pendingSync: true }))
+    return [...placeholders, ...freshEntries]
+  }
+
+  function queueEntryLocally(fields) {
+    const item = outbox.enqueue(session.user.id, activeId, fields)
+    setEntries((list) => [{ ...fields, id: item.localId, pendingSync: true }, ...list])
+    setPendingCount((n) => n + 1)
+  }
+
+  // Walks the queue in order and tries to actually save each one.
+  // Called on mount (in case a previous offline session left entries
+  // queued and we're already online by the time this loads), and again
+  // every time the browser reports the connection came back — no manual
+  // "retry" button anywhere in the UI.
+  async function flushOutbox() {
+    const queue = outbox.loadQueue(session.user.id)
+    for (const item of queue) {
+      try {
+        const saved = await storage.addEntry(item.projectId, item.entry)
+        outbox.dequeue(session.user.id, item.localId)
+        if (item.projectId === activeIdRef.current) {
+          setEntries((list) => list.map((e) => (e.id === item.localId ? saved : e)))
+        }
+      } catch (err) {
+        if (isLikelyOffline(err)) {
+          // Still offline (or dropped again mid-flush) — stop here rather
+          // than hammering a dead connection through the rest of the
+          // queue. The next 'online' event will pick up where this left off.
+          break
+        }
+        // A genuine server-side rejection (e.g. access to that project
+        // was revoked while this device was offline). Retrying forever
+        // won't fix that — drop it from the queue, but don't silently
+        // vanish it from view either: flag it so it's obviously unsaved.
+        outbox.dequeue(session.user.id, item.localId)
+        if (item.projectId === activeIdRef.current) {
+          setEntries((list) =>
+            list.map((e) => (e.id === item.localId ? { ...e, pendingSync: false, syncFailed: true } : e)),
+          )
+        }
+      }
+    }
+    setPendingCount(outbox.queueLength(session.user.id))
+  }
+
+  useEffect(() => {
+    flushOutbox()
+    window.addEventListener('online', flushOutbox)
+    return () => window.removeEventListener('online', flushOutbox)
+    // Deliberately only re-runs if the signed-in user changes — flushOutbox
+    // itself always reads current state via refs/storage, not stale closures.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.user.id])
 
   // Clean the ?checkout=... param out of the URL once, on mount, so a
   // page refresh doesn't re-trigger the "just checked out" polling logic
@@ -66,8 +152,9 @@ export default function App({ session, onSignOut }) {
           setActiveId(list[0].id)
           const entryList = await storage.getEntries(list[0].id)
           if (cancelled) return
-          setEntries(entryList)
+          setEntries(mergeQueuedIntoEntries(list[0].id, entryList))
         }
+        setPendingCount(outbox.queueLength(session.user.id))
       } catch (err) {
         if (!cancelled) setError(err.message || 'Σφάλμα φόρτωσης δεδομένων')
       } finally {
@@ -78,13 +165,20 @@ export default function App({ session, onSignOut }) {
     return () => {
       cancelled = true
     }
+    // mergeQueuedIntoEntries only closes over session.user.id, already listed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.user.id, session.user.email])
 
   async function switchProject(id) {
     setActiveId(id)
     try {
-      setEntries(await storage.getEntries(id))
+      const fresh = await storage.getEntries(id)
+      setEntries(mergeQueuedIntoEntries(id, fresh))
     } catch (err) {
+      // Can't reach the server for this project's real entries (e.g. no
+      // connection right now) — still show whatever's queued locally for
+      // it rather than an empty list, since those are real, just unsynced.
+      setEntries(mergeQueuedIntoEntries(id, []))
       setError(err.message || 'Σφάλμα φόρτωσης καταχωρήσεων')
     }
   }
@@ -100,13 +194,34 @@ export default function App({ session, onSignOut }) {
   // Same contract: throws on failure, QuickAddModal displays it. Handles
   // both add and edit — which one depends on whether editingEntry is set
   // when the modal was opened (see openQuickAdd/openEditEntry below).
+  //
+  // Editing still requires a live connection — it acts on a row that
+  // already exists server-side (see outbox.js for why that's out of scope
+  // for the offline queue). Adding a new entry is the one write that
+  // stays usable with no signal: if we're offline, or the request fails
+  // because we just went offline mid-request, queue it locally instead of
+  // showing an error — from the user's point of view it saved.
   async function saveEntry(fields) {
     if (editingEntry) {
       const saved = await storage.updateEntry(editingEntry.id, fields)
       setEntries((list) => list.map((e) => (e.id === saved.id ? saved : e)))
-    } else {
+      return
+    }
+
+    if (!navigator.onLine) {
+      queueEntryLocally(fields)
+      return
+    }
+
+    try {
       const saved = await storage.addEntry(activeId, fields)
       setEntries((list) => [saved, ...list])
+    } catch (err) {
+      if (isLikelyOffline(err)) {
+        queueEntryLocally(fields)
+      } else {
+        throw err
+      }
     }
   }
 
@@ -121,6 +236,16 @@ export default function App({ session, onSignOut }) {
   }
 
   async function deleteEntry(id) {
+    // A queued-but-not-yet-synced entry (or one that failed to sync, see
+    // flushOutbox — either way it's still tagged with its outbox localId,
+    // not a real database id) has no real row on the server yet. Nothing
+    // to delete remotely, just drop it from the local queue and the list.
+    if (String(id).startsWith('local-')) {
+      outbox.dequeue(session.user.id, id) // no-op if flushOutbox already removed it
+      setEntries((list) => list.filter((e) => e.id !== id))
+      setPendingCount(outbox.queueLength(session.user.id))
+      return
+    }
     try {
       await storage.deleteEntry(id)
       setEntries((list) => list.filter((e) => e.id !== id))
@@ -190,6 +315,13 @@ export default function App({ session, onSignOut }) {
           <button onClick={() => setError('')} className="text-rose-400 shrink-0">
             ×
           </button>
+        </div>
+      )}
+
+      {pendingCount > 0 && (
+        <div className="bg-amber-50 text-amber-800 text-xs px-4 py-2 border-b border-amber-200">
+          📶 {pendingCount} {pendingCount === 1 ? 'καταχώρηση' : 'καταχωρήσεις'} σε αναμονή — θα
+          συγχρονιστεί{pendingCount === 1 ? '' : 'ούν'} όταν επανέλθει το δίκτυο.
         </div>
       )}
 
