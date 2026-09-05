@@ -7,6 +7,7 @@ import NewProjectModal from './components/NewProjectModal'
 import QuickAddModal from './components/QuickAddModal'
 import ProjectSettingsModal from './components/ProjectSettingsModal'
 import * as storage from './lib/storage'
+import { entriesToCsv, slugifyFilename, downloadCsv } from './lib/csv'
 
 export default function App({ onSignOut }) {
   const [projects, setProjects] = useState([])
@@ -114,6 +115,12 @@ export default function App({ onSignOut }) {
     }
   }
 
+  function exportCsv() {
+    const csv = entriesToCsv(entries)
+    const today = new Date().toISOString().slice(0, 10)
+    downloadCsv(`${slugifyFilename(activeProject.name)}-${today}.csv`, csv)
+  }
+
   const income = entries.filter((e) => e.kind === 'income').reduce((s, e) => s + e.amount, 0)
   const expense = entries.filter((e) => e.kind === 'expense').reduce((s, e) => s + e.amount, 0)
   const profit = income - expense
@@ -199,6 +206,7 @@ export default function App({ onSignOut }) {
           onClose={() => setShowProjectSettings(false)}
           onSave={updateProject}
           onDelete={removeProject}
+          onExport={exportCsv}
         />
       )}
     </div>

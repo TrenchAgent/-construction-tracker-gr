@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function ProjectSettingsModal({ project, onClose, onSave, onDelete }) {
+export default function ProjectSettingsModal({ project, onClose, onSave, onDelete, onExport }) {
   const [name, setName] = useState(project.name)
   const [location, setLocation] = useState(project.location)
   const [error, setError] = useState('')
@@ -66,6 +66,12 @@ export default function ProjectSettingsModal({ project, onClose, onSave, onDelet
           className="w-full bg-orange-700 text-white rounded-xl py-2.5 font-medium text-sm mb-3 disabled:opacity-60"
         >
           {busy ? 'Αποθήκευση…' : 'Αποθήκευση αλλαγών'}
+        </button>
+        <button
+          onClick={onExport}
+          className="w-full border border-stone-300 text-stone-700 rounded-xl py-2.5 font-medium text-sm mb-3"
+        >
+          Εξαγωγή καταχωρήσεων (CSV)
         </button>
         <button
           onClick={handleDelete}
