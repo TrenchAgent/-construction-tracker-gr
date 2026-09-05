@@ -6,6 +6,6 @@ import AuthGate from './components/AuthGate.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AuthGate>{({ signOut }) => <App onSignOut={signOut} />}</AuthGate>
+    <AuthGate>{({ session, signOut }) => <App session={session} onSignOut={signOut} />}</AuthGate>
   </StrictMode>,
 )

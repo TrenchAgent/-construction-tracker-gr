@@ -9,7 +9,20 @@ import ProjectSettingsModal from './components/ProjectSettingsModal'
 import * as storage from './lib/storage'
 import { entriesToCsv, slugifyFilename, downloadCsv } from './lib/csv'
 
-export default function App({ onSignOut }) {
+// Attaches a `role` to each project: 'owner' if the current user created
+// it, otherwise whatever role their collaborator invite grants. This is
+// purely for the UI (show/hide edit controls) — the real enforcement is
+// server-side RLS, so getting this wrong would be a UX annoyance, not a
+// security hole.
+function attachRoles(rawProjects, myCollaborations, currentUserId) {
+  const roleByProjectId = new Map(myCollaborations.map((c) => [c.project_id, c.role]))
+  return rawProjects.map((p) => ({
+    ...p,
+    role: p.ownerId === currentUserId ? 'owner' : (roleByProjectId.get(p.id) ?? 'viewer'),
+  }))
+}
+
+export default function App({ session, onSignOut }) {
   const [projects, setProjects] = useState([])
   const [activeId, setActiveId] = useState(null)
   const [entries, setEntries] = useState([])
@@ -26,8 +39,12 @@ export default function App({ onSignOut }) {
     let cancelled = false
     async function load() {
       try {
-        const list = await storage.getProjects()
+        const [rawProjects, myCollaborations] = await Promise.all([
+          storage.getProjects(),
+          storage.getMyCollaborations(session.user.email),
+        ])
         if (cancelled) return
+        const list = attachRoles(rawProjects, myCollaborations, session.user.id)
         setProjects(list)
         if (list.length) {
           setActiveId(list[0].id)
@@ -45,7 +62,7 @@ export default function App({ onSignOut }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [session.user.id, session.user.email])
 
   async function switchProject(id) {
     setActiveId(id)
@@ -60,7 +77,7 @@ export default function App({ onSignOut }) {
   // itself, so the modal stays open with what the user typed.
   async function createProject({ name, location }) {
     const project = await storage.addProject({ name, location })
-    setProjects((list) => [project, ...list])
+    setProjects((list) => [{ ...project, role: 'owner' }, ...list])
     await switchProject(project.id)
   }
 
@@ -99,7 +116,7 @@ export default function App({ onSignOut }) {
   // Throws on failure — ProjectSettingsModal displays it.
   async function updateProject(fields) {
     const saved = await storage.updateProject(activeId, fields)
-    setProjects((list) => list.map((p) => (p.id === saved.id ? saved : p)))
+    setProjects((list) => list.map((p) => (p.id === saved.id ? { ...saved, role: p.role } : p)))
   }
 
   // Throws on failure — ProjectSettingsModal displays it.
@@ -121,10 +138,22 @@ export default function App({ onSignOut }) {
     downloadCsv(`${slugifyFilename(activeProject.name)}-${today}.csv`, csv)
   }
 
+  // All three throw on failure — ProjectSettingsModal displays it.
+  async function loadCollaborators() {
+    return storage.getCollaborators(activeId)
+  }
+  async function inviteCollaborator({ email, role }) {
+    return storage.addCollaborator(activeId, { email, role })
+  }
+  async function removeCollaboratorById(id) {
+    await storage.removeCollaborator(id)
+  }
+
   const income = entries.filter((e) => e.kind === 'income').reduce((s, e) => s + e.amount, 0)
   const expense = entries.filter((e) => e.kind === 'expense').reduce((s, e) => s + e.amount, 0)
   const profit = income - expense
   const activeProject = projects.find((p) => p.id === activeId)
+  const canEdit = activeProject && activeProject.role !== 'viewer'
 
   if (loading) {
     return (
@@ -173,11 +202,16 @@ export default function App({ onSignOut }) {
             </button>
           </div>
 
-          <EntryList entries={entries} onEdit={openEditEntry} onDelete={deleteEntry} />
+          <EntryList
+            entries={entries}
+            canEdit={canEdit}
+            onEdit={openEditEntry}
+            onDelete={deleteEntry}
+          />
         </div>
       )}
 
-      {activeProject && (
+      {activeProject && canEdit && (
         <button
           onClick={openQuickAdd}
           className="fixed bottom-5 right-5 bg-orange-700 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center text-2xl leading-none"
@@ -207,6 +241,9 @@ export default function App({ onSignOut }) {
           onSave={updateProject}
           onDelete={removeProject}
           onExport={exportCsv}
+          onLoadCollaborators={loadCollaborators}
+          onInviteCollaborator={inviteCollaborator}
+          onRemoveCollaborator={removeCollaboratorById}
         />
       )}
     </div>

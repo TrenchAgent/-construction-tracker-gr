@@ -1,7 +1,7 @@
 import { CATEGORY_BADGE_STYLES } from '../constants'
 import { formatEUR } from '../lib/format'
 
-export default function EntryList({ entries, onEdit, onDelete }) {
+export default function EntryList({ entries, canEdit, onEdit, onDelete }) {
   if (entries.length === 0) {
     return (
       <div className="text-sm text-stone-400 text-center py-10">
@@ -12,12 +12,9 @@ export default function EntryList({ entries, onEdit, onDelete }) {
 
   return (
     <div className="space-y-2">
-      {entries.map((e) => (
-        <div
-          key={e.id}
-          className="bg-white border border-stone-200 rounded-xl p-3 flex items-start gap-3"
-        >
-          <button onClick={() => onEdit(e)} className="flex-1 min-w-0 text-left">
+      {entries.map((e) => {
+        const details = (
+          <>
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               {e.kind === 'expense' ? (
                 <span
@@ -44,26 +41,42 @@ export default function EntryList({ entries, onEdit, onDelete }) {
               {e.vendor ? e.vendor + ' · ' : ''}
               {e.date}
             </div>
-          </button>
-          <div className="text-right shrink-0">
-            <div
-              className={
-                'font-semibold text-sm ' +
-                (e.kind === 'income' ? 'text-emerald-700' : 'text-rose-700')
-              }
-            >
-              {e.kind === 'income' ? '+' : '-'}
-              {formatEUR(e.amount)}
+          </>
+        )
+        return (
+          <div
+            key={e.id}
+            className="bg-white border border-stone-200 rounded-xl p-3 flex items-start gap-3"
+          >
+            {canEdit ? (
+              <button onClick={() => onEdit(e)} className="flex-1 min-w-0 text-left">
+                {details}
+              </button>
+            ) : (
+              <div className="flex-1 min-w-0">{details}</div>
+            )}
+            <div className="text-right shrink-0">
+              <div
+                className={
+                  'font-semibold text-sm ' +
+                  (e.kind === 'income' ? 'text-emerald-700' : 'text-rose-700')
+                }
+              >
+                {e.kind === 'income' ? '+' : '-'}
+                {formatEUR(e.amount)}
+              </div>
+              {canEdit && (
+                <button
+                  onClick={() => onDelete(e.id)}
+                  className="text-stone-300 hover:text-rose-600 mt-1 text-xs"
+                >
+                  Διαγραφή
+                </button>
+              )}
             </div>
-            <button
-              onClick={() => onDelete(e.id)}
-              className="text-stone-300 hover:text-rose-600 mt-1 text-xs"
-            >
-              Διαγραφή
-            </button>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

@@ -10,3 +10,10 @@ export const CATEGORY_BADGE_STYLES = {
 }
 
 export const VAT_RATE = 0.24
+
+export const COLLABORATOR_ROLES = ['viewer', 'editor']
+
+export const COLLABORATOR_ROLE_LABELS = {
+  viewer: 'Προβολή',
+  editor: 'Επεξεργασία',
+}

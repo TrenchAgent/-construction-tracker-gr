@@ -12,7 +12,14 @@ export default function Header({
       <div className="flex-1 min-w-0">
         {activeProject ? (
           <>
-            <div className="font-semibold truncate">{activeProject.name}</div>
+            <div className="font-semibold truncate flex items-center gap-1.5">
+              <span className="truncate">{activeProject.name}</span>
+              {activeProject.role && activeProject.role !== 'owner' && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-medium shrink-0">
+                  Συνεργασία
+                </span>
+              )}
+            </div>
             {activeProject.location && (
               <div className="text-xs text-stone-500 truncate">{activeProject.location}</div>
             )}

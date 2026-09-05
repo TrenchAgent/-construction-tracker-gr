@@ -22,7 +22,11 @@
 import { supabase } from './supabaseClient'
 
 function mapProject(row) {
-  return { id: row.id, name: row.name, location: row.location || '' }
+  return { id: row.id, name: row.name, location: row.location || '', ownerId: row.user_id }
+}
+
+function mapCollaborator(row) {
+  return { id: row.id, email: row.email, role: row.role }
 }
 
 function mapEntry(row) {
@@ -122,9 +126,52 @@ export async function updateProject(id, { name, location }) {
   return mapProject(data)
 }
 
-// Cascades to that project's entries automatically — see the "on delete
-// cascade" foreign key on entries.project_id in supabase/schema.sql.
+// Cascades to that project's entries (and its collaborator rows)
+// automatically — see the "on delete cascade" foreign keys in
+// supabase/schema.sql.
 export async function deleteProject(id) {
   const { error } = await supabase.from('projects').delete().eq('id', id)
+  if (error) throw error
+}
+
+// Every project this email has been given collaborator access to, and at
+// what role — used once at load time to figure out which of the projects
+// getProjects() returns (owned + shared) the current user can edit vs.
+// only view. Not project-scoped: a collaborator invite is looked up by
+// email, so this is inherently "everything shared with me".
+export async function getMyCollaborations(email) {
+  const { data, error } = await supabase
+    .from('project_collaborators')
+    .select('project_id, role')
+    .eq('email', email.toLowerCase())
+  if (error) throw error
+  return data
+}
+
+// Owner-only in practice (RLS), but any caller without owner access just
+// gets an empty list back rather than an error — fine, since the UI never
+// shows this to non-owners anyway.
+export async function getCollaborators(projectId) {
+  const { data, error } = await supabase
+    .from('project_collaborators')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data.map(mapCollaborator)
+}
+
+export async function addCollaborator(projectId, { email, role }) {
+  const { data, error } = await supabase
+    .from('project_collaborators')
+    .insert({ project_id: projectId, email: email.toLowerCase().trim(), role })
+    .select()
+    .single()
+  if (error) throw error
+  return mapCollaborator(data)
+}
+
+export async function removeCollaborator(id) {
+  const { error } = await supabase.from('project_collaborators').delete().eq('id', id)
   if (error) throw error
 }
