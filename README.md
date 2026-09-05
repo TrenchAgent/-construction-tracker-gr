@@ -86,6 +86,70 @@ other collaborators, a viewer cannot write anything, and removing a
 collaborator revokes their access on their very next request — not just
 in their UI, and not only after they next log in.
 
+## Billing (Stripe — TEST MODE ONLY right now)
+
+Paying accounts get a single flat monthly subscription with a 14-day free
+trial, via Stripe Checkout. There are no tiers.
+
+**This is wired to Stripe in test mode only.** No real card can be charged
+right now — that's enforced in code, not just by convention. See
+`netlify/functions/lib/stripeClient.js`: it refuses to even start if
+`STRIPE_SECRET_KEY` isn't a `sk_test_...` key. When you're ready to accept
+real payments (after business registration is finished), the whole switch
+is: delete that guard block, and put a real `sk_live_...` key in Netlify's
+`STRIPE_SECRET_KEY` env var. Nothing else about the code changes.
+
+How it works:
+- **Λογαριασμός** (the 👤 icon in the header) shows your subscription
+  status: no subscription yet → a pricing card with an upgrade button;
+  trialing/active → days left or renewal date; past due/unpaid → a warning.
+- Clicking upgrade calls a Netlify Function (`create-checkout-session.js`)
+  that creates a Stripe Checkout session for your account and redirects you
+  to Stripe's hosted payment page.
+- After payment (or during the trial, since Stripe still collects a card
+  up front), Stripe calls a webhook (`stripe-webhook.js`) which verifies
+  the request really came from Stripe (signature check, not just trusting
+  whoever calls the URL) and writes the subscription status into a
+  `subscriptions` table — one row per account, readable only by that
+  account (Row Level Security again, same pattern as everything else).
+
+Env vars this feature needs, all in Netlify (**Site configuration →
+Environment variables**), none of them safe to put in frontend code:
+- `STRIPE_SECRET_KEY` — must start with `sk_test_` right now.
+- `STRIPE_PRICE_ID` — the Stripe Price object for the monthly subscription.
+- `STRIPE_WEBHOOK_SECRET` — from the webhook endpoint's settings in the
+  Stripe dashboard, used to verify incoming webhook calls are genuinely
+  from Stripe.
+- `SUPABASE_SERVICE_ROLE_KEY` — the *secret* key from Supabase's API
+  settings (not the publishable one used elsewhere in this app). Needed
+  because these two functions run on the server and must look up/write
+  subscription rows for the signed-in user directly, bypassing RLS the
+  same way Supabase's own dashboard does. Never put this in a frontend
+  env var (i.e. nothing prefixed `VITE_`).
+
+One outstanding cleanup item: when these four secret-ish values were
+first added in the Netlify dashboard, checking "contains secret values"
+on `STRIPE_SECRET_KEY` and `SUPABASE_SERVICE_ROLE_KEY` split them across
+multiple deploy contexts instead of "same value in all contexts". It's
+currently working because the values happen to be correct in whichever
+context Netlify uses for a production deploy, but it's fragile — worth
+going back into each variable's settings and re-saving it as one value
+for all contexts, so a future deploy from a different context (e.g. a
+branch deploy or PR preview) doesn't silently read a blank value.
+
+**Verification note:** the Checkout-session creation, the webhook's
+signature verification, and the full webhook processing logic (including
+writing correct data to the database) were all tested end-to-end using
+Stripe's own test-mode API tooling — a real test customer, subscription,
+and a genuinely Stripe-signed webhook event, not fakes. The one thing not
+automated was clicking through Stripe's own hosted Checkout page with a
+test card, because headless-browser automation against
+`checkout.stripe.com` was consistently blocked, almost certainly by
+Stripe's own fraud detection — not something worth trying to defeat, even
+in test mode. Do that one manual click-through yourself at some point
+(`4242 4242 4242 4242`, any future expiry, any CVC) as the final sanity
+check of Stripe's side of the flow.
+
 ## Project structure
 
 ```
@@ -118,14 +182,26 @@ src/
                                      only (✎ icon in the header)
     QuickAddModal.jsx              "add entry" bottom sheet — also handles
                                     editing an existing entry
+    AccountModal.jsx                subscription status + upgrade button
+                                     (👤 icon in the header)
 public/
   icon.svg, icon-192.png, icon-512.png   app icons (used by the PWA manifest)
+netlify/functions/
+  create-checkout-session.js  starts a Stripe Checkout session for the
+                               signed-in user
+  stripe-webhook.js            receives Stripe's webhook calls, verifies
+                                their signature, updates `subscriptions`
+  lib/stripeClient.js           the Stripe SDK client — refuses to start
+                                 unless the key is a test key (see Billing)
+  lib/supabaseAdmin.js          server-side Supabase client using the
+                                 secret key, for the two functions above
 supabase/
   schema.sql                  run once in the Supabase SQL Editor — creates
-                               the projects/entries/project_collaborators
-                               tables, their Row Level Security policies,
-                               and the two SECURITY DEFINER helper
-                               functions those policies rely on
+                               the projects/entries/project_collaborators/
+                               subscriptions tables, their Row Level
+                               Security policies, and the two SECURITY
+                               DEFINER helper functions those policies
+                               rely on
 vite.config.js                Vite + Tailwind + PWA plugin configuration
 .env.example                  which env vars the app needs (copy to
                                .env.local and fill in real values — never
