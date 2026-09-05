@@ -1,5 +1,5 @@
-const stripe = require('./lib/stripeClient')
-const supabaseAdmin = require('./lib/supabaseAdmin')
+import stripe from './lib/stripeClient.js'
+import supabaseAdmin from './lib/supabaseAdmin.js'
 
 // How long the free trial lasts. One number, one place — change this and
 // redeploy to adjust it. (Stripe runs the trial itself: the customer's
@@ -7,7 +7,7 @@ const supabaseAdmin = require('./lib/supabaseAdmin')
 // days pass and the subscription leaves "trialing" status.)
 const TRIAL_DAYS = 14
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method not allowed' }
   }

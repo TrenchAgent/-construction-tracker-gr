@@ -1,4 +1,4 @@
-const Stripe = require('stripe')
+import Stripe from 'stripe'
 
 // ---------------------------------------------------------------------------
 // TEST-MODE SAFETY GUARD
@@ -26,4 +26,4 @@ if (!secretKey.startsWith('sk_test_')) {
 // No pinned apiVersion here on purpose — let the installed SDK version use
 // its own matching default rather than guessing a version string that
 // might drift out of sync with whatever SDK version is actually installed.
-module.exports = new Stripe(secretKey)
+export default new Stripe(secretKey)

@@ -1,5 +1,5 @@
-const stripe = require('./lib/stripeClient')
-const supabaseAdmin = require('./lib/supabaseAdmin')
+import stripe from './lib/stripeClient.js'
+import supabaseAdmin from './lib/supabaseAdmin.js'
 
 // As of the Stripe API version this SDK defaults to, current_period_end
 // lives on each subscription item, not on the subscription object itself
@@ -41,7 +41,7 @@ async function updateSubscriptionByStripeId(subscription) {
   if (error) throw error
 }
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method not allowed' }
   }
