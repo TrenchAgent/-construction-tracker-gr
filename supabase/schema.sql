@@ -35,6 +35,21 @@ create table if not exists entries (
 
 create index if not exists entries_project_id_idx on entries (project_id);
 
+-- Payment status per entry — added after entries already existed in
+-- production, so this is an ALTER, not part of the CREATE TABLE above
+-- (which only runs for a brand-new database). "if not exists" / drop-then-
+-- add-constraint keep this safe to re-run, same as everything else here.
+alter table entries add column if not exists payment_status text not null default 'pending';
+alter table entries drop constraint if exists entries_payment_status_check;
+alter table entries add constraint entries_payment_status_check
+  check (payment_status in ('pending', 'partial', 'paid'));
+
+-- Optional payment method per entry — same "added later" situation.
+alter table entries add column if not exists payment_method text;
+alter table entries drop constraint if exists entries_payment_method_check;
+alter table entries add constraint entries_payment_method_check
+  check (payment_method is null or payment_method in ('cash', 'transfer', 'card', 'check'));
+
 -- A project owner can share view or edit access to a specific project with
 -- someone else by email — no separate invite/accept flow, no new auth
 -- system. The collaborator gets access automatically the next time they

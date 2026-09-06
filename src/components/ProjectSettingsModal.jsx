@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { X, FileDown, Trash2, UserPlus } from 'lucide-react'
 import { COLLABORATOR_ROLES, COLLABORATOR_ROLE_LABELS } from '../constants'
 
 function CollaboratorsSection({ onLoadCollaborators, onInvite, onRemove }) {
@@ -79,8 +80,9 @@ function CollaboratorsSection({ onLoadCollaborators, onInvite, onRemove }) {
               <button
                 onClick={() => handleRemove(c.id)}
                 disabled={busy}
-                className="text-stone-300 hover:text-rose-600 text-xs shrink-0 disabled:opacity-60"
+                className="text-stone-300 hover:text-rose-600 text-xs shrink-0 disabled:opacity-60 inline-flex items-center gap-0.5"
               >
+                <X size={12} />
                 Αφαίρεση
               </button>
             </div>
@@ -115,8 +117,9 @@ function CollaboratorsSection({ onLoadCollaborators, onInvite, onRemove }) {
       <button
         onClick={handleInvite}
         disabled={busy}
-        className="w-full border border-stone-300 text-stone-700 rounded-xl py-2 font-medium text-sm disabled:opacity-60"
+        className="w-full border border-stone-300 text-stone-700 rounded-xl py-2 font-medium text-sm disabled:opacity-60 inline-flex items-center justify-center gap-1.5"
       >
+        <UserPlus size={15} />
         {busy ? 'Πρόσκληση…' : 'Πρόσκληση συνεργάτη'}
       </button>
     </div>
@@ -179,8 +182,8 @@ export default function ProjectSettingsModal({
       >
         <div className="flex items-center mb-4">
           <h3 className="font-semibold">{isOwner ? 'Ρυθμίσεις έργου' : 'Πληροφορίες έργου'}</h3>
-          <button onClick={onClose} className="ml-auto text-stone-400 text-lg">
-            ×
+          <button onClick={onClose} className="ml-auto text-stone-400 p-1 -m-1">
+            <X size={18} />
           </button>
         </div>
 
@@ -216,8 +219,9 @@ export default function ProjectSettingsModal({
 
         <button
           onClick={onExport}
-          className="w-full border border-stone-300 text-stone-700 rounded-xl py-2.5 font-medium text-sm mb-1"
+          className="w-full border border-stone-300 text-stone-700 rounded-xl py-2.5 font-medium text-sm mb-1 inline-flex items-center justify-center gap-1.5"
         >
+          <FileDown size={15} />
           Εξαγωγή καταχωρήσεων (CSV)
         </button>
 
@@ -231,8 +235,9 @@ export default function ProjectSettingsModal({
             <button
               onClick={handleDelete}
               disabled={busy}
-              className="w-full text-rose-600 text-sm py-2 disabled:opacity-60"
+              className="w-full text-rose-600 text-sm py-2 disabled:opacity-60 inline-flex items-center justify-center gap-1.5"
             >
+              <Trash2 size={15} />
               Διαγραφή έργου
             </button>
           </>

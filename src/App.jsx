@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { X, WifiOff, Plus } from 'lucide-react'
 import Header from './components/Header'
 import EmptyState from './components/EmptyState'
 import DashboardSummary from './components/DashboardSummary'
+import TimeBreakdown from './components/TimeBreakdown'
 import EntryList from './components/EntryList'
 import NewProjectModal from './components/NewProjectModal'
 import QuickAddModal from './components/QuickAddModal'
@@ -293,6 +295,12 @@ export default function App({ session, onSignOut }) {
   const income = entries.filter((e) => e.kind === 'income').reduce((s, e) => s + e.amount, 0)
   const expense = entries.filter((e) => e.kind === 'expense').reduce((s, e) => s + e.amount, 0)
   const profit = income - expense
+  // "Outstanding" = not fully settled yet — pending or partially paid.
+  // Applies across both income (money owed to you) and expenses (money
+  // you owe), since both are equally real to track.
+  const pendingAmount = entries
+    .filter((e) => e.paymentStatus === 'pending' || e.paymentStatus === 'partial')
+    .reduce((s, e) => s + e.amount, 0)
   const activeProject = projects.find((p) => p.id === activeId)
   const canEdit = activeProject && activeProject.role !== 'viewer'
 
@@ -313,14 +321,15 @@ export default function App({ session, onSignOut }) {
         <div className="bg-rose-50 text-rose-700 text-xs px-4 py-2 flex items-center gap-2 border-b border-rose-200">
           <span className="flex-1">{error}</span>
           <button onClick={() => setError('')} className="text-rose-400 shrink-0">
-            ×
+            <X size={14} />
           </button>
         </div>
       )}
 
       {pendingCount > 0 && (
-        <div className="bg-amber-50 text-amber-800 text-xs px-4 py-2 border-b border-amber-200">
-          📶 {pendingCount} {pendingCount === 1 ? 'καταχώρηση' : 'καταχωρήσεις'} σε αναμονή — θα
+        <div className="bg-amber-50 text-amber-800 text-xs px-4 py-2 border-b border-amber-200 flex items-center gap-1.5">
+          <WifiOff size={13} className="shrink-0" />
+          {pendingCount} {pendingCount === 1 ? 'καταχώρηση' : 'καταχωρήσεις'} σε αναμονή — θα
           συγχρονιστεί{pendingCount === 1 ? '' : 'ούν'} όταν επανέλθει το δίκτυο.
         </div>
       )}
@@ -339,15 +348,23 @@ export default function App({ session, onSignOut }) {
         <EmptyState onNewProject={() => setShowNewProject(true)} />
       ) : (
         <div className="p-4 pb-24">
-          <DashboardSummary income={income} expense={expense} profit={profit} />
+          <DashboardSummary
+            income={income}
+            expense={expense}
+            profit={profit}
+            pendingAmount={pendingAmount}
+          />
+
+          <TimeBreakdown entries={entries} />
 
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-stone-700">Καταχωρήσεις</h3>
             <button
               onClick={() => setShowNewProject(true)}
-              className="text-xs text-orange-700 font-medium"
+              className="text-xs text-orange-700 font-medium flex items-center gap-0.5"
             >
-              + Νέο έργο
+              <Plus size={13} />
+              Νέο έργο
             </button>
           </div>
 
@@ -363,11 +380,11 @@ export default function App({ session, onSignOut }) {
       {activeProject && canEdit && (
         <button
           onClick={openQuickAdd}
-          className="fixed bottom-5 right-5 bg-orange-700 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center text-2xl leading-none"
+          className="fixed bottom-5 right-5 bg-orange-700 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center"
           style={{ maxWidth: '28rem' }}
           aria-label="Νέα καταχώρηση"
         >
-          +
+          <Plus size={26} />
         </button>
       )}
 

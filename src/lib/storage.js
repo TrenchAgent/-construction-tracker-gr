@@ -39,6 +39,8 @@ function mapEntry(row) {
     amount: Number(row.amount),
     vat: row.vat,
     date: row.date,
+    paymentStatus: row.payment_status,
+    paymentMethod: row.payment_method || '',
   }
 }
 
@@ -84,6 +86,8 @@ export async function addEntry(projectId, entry) {
       amount: entry.amount,
       vat: entry.vat,
       date: entry.date,
+      payment_status: entry.paymentStatus,
+      payment_method: entry.paymentMethod || null,
     })
     .select()
     .single()
@@ -102,6 +106,8 @@ export async function updateEntry(id, entry) {
       amount: entry.amount,
       vat: entry.vat,
       date: entry.date,
+      payment_status: entry.paymentStatus,
+      payment_method: entry.paymentMethod || null,
     })
     .eq('id', id)
     .select()

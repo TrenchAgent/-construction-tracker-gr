@@ -1,5 +1,13 @@
 import { useState } from 'react'
-import { EXPENSE_CATEGORIES, VAT_RATE } from '../constants'
+import { X } from 'lucide-react'
+import {
+  EXPENSE_CATEGORIES,
+  VAT_RATE,
+  PAYMENT_STATUSES,
+  PAYMENT_STATUS_LABELS,
+  PAYMENT_METHODS,
+  PAYMENT_METHOD_LABELS,
+} from '../constants'
 
 const emptyForm = () => ({
   kind: 'expense',
@@ -9,6 +17,12 @@ const emptyForm = () => ({
   amount: '',
   vat: false,
   date: new Date().toISOString().slice(0, 10),
+  // A brand new entry defaults to "not yet paid" — matches reality most of
+  // the time (you record the expense/invoice before settling it), and
+  // unlike VAT this is meant to change later, so editing an entry lets you
+  // move it forward (e.g. pending → paid) at any time.
+  paymentStatus: 'pending',
+  paymentMethod: '',
 })
 
 // editingEntry: pass an existing entry to edit it in place instead of
@@ -29,6 +43,8 @@ export default function QuickAddModal({ onClose, onSave, editingEntry }) {
           amount: String(editingEntry.amount),
           vat: editingEntry.vat,
           date: editingEntry.date,
+          paymentStatus: editingEntry.paymentStatus,
+          paymentMethod: editingEntry.paymentMethod || '',
         }
       : emptyForm(),
   )
@@ -66,6 +82,8 @@ export default function QuickAddModal({ onClose, onSave, editingEntry }) {
         // a stale VAT flag on a row that no longer has a category for it.
         vat: form.kind === 'expense' ? form.vat : false,
         date: form.date,
+        paymentStatus: form.paymentStatus,
+        paymentMethod: form.paymentMethod,
       })
       onClose() // unmounts this component — don't touch state after this
     } catch (err) {
@@ -84,8 +102,8 @@ export default function QuickAddModal({ onClose, onSave, editingEntry }) {
           <h3 className="font-semibold">
             {isEditing ? 'Επεξεργασία καταχώρησης' : 'Νέα καταχώρηση'}
           </h3>
-          <button onClick={onClose} className="ml-auto text-stone-400 text-lg">
-            ×
+          <button onClick={onClose} className="ml-auto text-stone-400 p-1 -m-1">
+            <X size={18} />
           </button>
         </div>
 
@@ -190,10 +208,46 @@ export default function QuickAddModal({ onClose, onSave, editingEntry }) {
         <label className="block text-xs text-stone-500 mb-1">Ημερομηνία</label>
         <input
           type="date"
-          className="w-full border border-stone-300 rounded-lg px-3 py-2 mb-4 text-sm"
+          className="w-full border border-stone-300 rounded-lg px-3 py-2 mb-3 text-sm"
           value={form.date}
           onChange={(e) => update({ date: e.target.value })}
         />
+
+        <label className="block text-xs text-stone-500 mb-1">Κατάσταση πληρωμής</label>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {PAYMENT_STATUSES.map((status) => (
+            <button
+              key={status}
+              onClick={() => update({ paymentStatus: status })}
+              className={
+                'py-1.5 rounded-lg text-xs font-medium border ' +
+                (form.paymentStatus === status
+                  ? 'border-orange-700 text-orange-800 bg-orange-50'
+                  : 'border-stone-300 text-stone-600')
+              }
+            >
+              {PAYMENT_STATUS_LABELS[status]}
+            </button>
+          ))}
+        </div>
+
+        <label className="block text-xs text-stone-500 mb-1">Τρόπος πληρωμής (προαιρετικό)</label>
+        <div className="grid grid-cols-4 gap-1.5 mb-4">
+          {PAYMENT_METHODS.map((method) => (
+            <button
+              key={method}
+              onClick={() => update({ paymentMethod: form.paymentMethod === method ? '' : method })}
+              className={
+                'py-1.5 rounded-lg text-[11px] font-medium border ' +
+                (form.paymentMethod === method
+                  ? 'border-orange-700 text-orange-800 bg-orange-50'
+                  : 'border-stone-300 text-stone-600')
+              }
+            >
+              {PAYMENT_METHOD_LABELS[method]}
+            </button>
+          ))}
+        </div>
 
         {error && <div className="text-xs text-rose-600 mb-2">{error}</div>}
         <button

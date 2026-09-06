@@ -1,3 +1,5 @@
+import { HardHat, Settings, User, LogOut } from 'lucide-react'
+
 export default function Header({
   activeProject,
   projects,
@@ -8,9 +10,9 @@ export default function Header({
   onSignOut,
 }) {
   return (
-    <div className="sticky top-0 bg-stone-50 border-b border-stone-200 px-4 py-3 flex items-center gap-2 z-10">
-      <span className="text-xl shrink-0">🏗️</span>
-      <div className="flex-1 min-w-0">
+    <div className="sticky top-0 bg-stone-50 border-b border-stone-200 px-4 py-3 flex items-center gap-1.5 z-10">
+      <HardHat className="w-5 h-5 text-orange-700 shrink-0" strokeWidth={2.25} />
+      <div className="flex-1 min-w-0 ml-1">
         {activeProject ? (
           <>
             <div className="font-semibold truncate flex items-center gap-1.5">
@@ -32,10 +34,10 @@ export default function Header({
       {activeProject && (
         <button
           onClick={onOpenProjectSettings}
-          className="text-stone-400 shrink-0"
+          className="text-stone-400 hover:text-stone-600 hover:bg-stone-200/60 shrink-0 p-1.5 rounded-lg"
           aria-label="Ρυθμίσεις έργου"
         >
-          ✎
+          <Settings className="w-4 h-4" />
         </button>
       )}
       {projects.length > 1 && (
@@ -53,12 +55,16 @@ export default function Header({
       )}
       <button
         onClick={onOpenAccount}
-        className="text-stone-400 shrink-0"
+        className="text-stone-400 hover:text-stone-600 hover:bg-stone-200/60 shrink-0 p-1.5 rounded-lg"
         aria-label="Λογαριασμός"
       >
-        👤
+        <User className="w-4 h-4" />
       </button>
-      <button onClick={onSignOut} className="text-xs text-stone-400 shrink-0">
+      <button
+        onClick={onSignOut}
+        className="text-stone-400 hover:text-stone-600 shrink-0 flex items-center gap-1 text-xs p-1.5"
+      >
+        <LogOut className="w-3.5 h-3.5" />
         Έξοδος
       </button>
     </div>

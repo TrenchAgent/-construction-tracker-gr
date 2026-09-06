@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { X } from 'lucide-react'
 import { getSubscription, startCheckout } from '../lib/billing'
 
 const PRICE_LABEL = '19,00 €/μήνα' // placeholder — swap for a real price whenever that's decided
@@ -61,8 +62,8 @@ export default function AccountModal({ email, justCheckedOut, onClose }) {
       <div className="bg-white w-full max-w-md rounded-t-2xl p-5">
         <div className="flex items-center mb-4">
           <h3 className="font-semibold">Λογαριασμός</h3>
-          <button onClick={onClose} className="ml-auto text-stone-400 text-lg">
-            ×
+          <button onClick={onClose} className="ml-auto text-stone-400 p-1 -m-1">
+            <X size={18} />
           </button>
         </div>
 

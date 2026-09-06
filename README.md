@@ -48,11 +48,13 @@ never talk to Supabase directly.
 
 **Included:** projects (name + optional location, editable, deletable —
 deleting a project deletes its entries too), quick-add entries (income or
-expense, amount, optional VAT 24%, optional vendor, required note, date),
-editable and deletable individual entries, a dashboard with
-income/expense/profit totals, a reverse-chronological entry list, CSV
-export per project, and inviting a collaborator (viewer or editor) to a
-specific project by email. Sign-in is by emailed link, no password.
+expense, amount, optional VAT 24%, optional vendor, required note, date,
+payment status, optional payment method), editable and deletable
+individual entries, a dashboard with income/expense/profit totals, an
+outstanding-amounts card, a Today/This week/This month breakdown, a
+reverse-chronological entry list, CSV export per project, and inviting a
+collaborator (viewer or editor) to a specific project by email. Sign-in
+is by emailed link, no password.
 
 One real limitation in entry editing, not hidden: the database only
 stores the final amount (VAT already applied, if it was on) — not the
@@ -61,16 +63,29 @@ the final amount, but doesn't let you flip its VAT flag or recompute from
 a new pre-VAT number; to change whether VAT applies, delete the entry and
 add it again.
 
-**Deliberately cut for v1** (don't add back without checking this is
-still wanted): tax ID (ΑΦΜ) capture, receipt photos, payment
-method/status tracking, a transportation cost field, rate analysis,
-overheads, work-area tagging, and finer-grained material categories.
+**Deliberately cut** (don't add back without checking this is still
+wanted): tax ID (ΑΦΜ) capture, a transportation cost field, rate
+analysis, business overheads, work-area tagging, labour attendance, and
+finer-grained material categories.
+
+## Payment tracking and time breakdown
+
+Every entry has a payment status — **Εκκρεμεί** (pending), **Μερική
+εξόφληση** (partial), or **Εξοφλήθηκε** (paid) — shown as a colored badge,
+and defaults to "pending" on a new entry (unlike VAT, this is meant to
+change later — e.g. mark it paid once it's settled — so editing an entry
+always lets you update it). An optional payment method (Μετρητά /
+Κατάθεση / Κάρτα / Επιταγή) can be tagged too. The dashboard shows an
+**Εκκρεμή ποσά** card totaling everything not yet fully paid (pending +
+partial, across both income and expenses), and a Σήμερα / Αυτή την
+εβδομάδα / Αυτόν τον μήνα breakdown of income and expenses (Monday-start
+week, matching the usual Greek convention).
 
 ## Working with no signal (offline entries)
 
 Construction sites often have bad or no signal. Adding a new expense or
 income entry works even with no connection: it appears in the list
-immediately, tagged **📶 θα συγχρονιστεί όταν επανέλθει το δίκτυο** ("will
+immediately, tagged **θα συγχρονιστεί όταν επανέλθει το δίκτυο** ("will
 sync when the connection returns"), and a small banner at the top shows
 how many entries are waiting. The moment the device gets a connection
 back, those entries are sent to the database automatically — no "retry"
@@ -93,8 +108,8 @@ queue when the browser reports the connection came back, and once more
 immediately on load in case there was already a leftover queue from a
 previous offline session. If a queued entry is ever rejected by the
 server for a real reason (not just "no connection") — e.g. access to that
-project was revoked while the device was offline — it's flagged **⚠
-απέτυχε η αποστολή** ("failed to send") instead of retried forever, so it
+project was revoked while the device was offline — it's flagged
+**απέτυχε η αποστολή** ("failed to send") instead of retried forever, so it
 stays visibly unsaved rather than quietly vanishing.
 
 ## Sharing a project (collaborators)
@@ -225,7 +240,9 @@ src/
     Header.jsx                   top bar, project switcher, sign-out,
                                   "Συνεργασία" badge on shared projects
     EmptyState.jsx                "no project yet" screen
-    DashboardSummary.jsx          income/expense/profit cards
+    DashboardSummary.jsx          income/expense/profit/outstanding cards
+    TimeBreakdown.jsx              Σήμερα / Αυτή την εβδομάδα / Αυτόν τον
+                                    μήνα income+expense breakdown
     EntryList.jsx                  the entry list — tap a row to edit,
                                     "Διαγραφή" to delete (hidden entirely
                                     for viewer-role collaborators)
@@ -233,11 +250,11 @@ src/
     ProjectSettingsModal.jsx        owner: rename/relocate, delete, CSV
                                      export, manage collaborators.
                                      non-owner: CSV export + role info
-                                     only (✎ icon in the header)
+                                     only (gear icon in the header)
     QuickAddModal.jsx              "add entry" bottom sheet — also handles
                                     editing an existing entry
     AccountModal.jsx                subscription status + upgrade button
-                                     (👤 icon in the header)
+                                     (person icon in the header)
 public/
   icon.svg, icon-192.png, icon-512.png   app icons (used by the PWA manifest)
 netlify/functions/

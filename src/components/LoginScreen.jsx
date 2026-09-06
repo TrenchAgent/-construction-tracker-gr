@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { HardHat } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 
 export default function LoginScreen() {
@@ -30,7 +31,7 @@ export default function LoginScreen() {
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-stone-50 flex flex-col items-center justify-center px-6 text-stone-900">
-      <div className="text-4xl mb-3">🏗️</div>
+      <HardHat size={40} strokeWidth={1.75} className="text-orange-700 mb-3" />
       <h1 className="font-semibold text-lg mb-1">Διαχείριση Έργου</h1>
       <p className="text-sm text-stone-500 mb-1 text-center">
         Συνδεθείτε με το email σας για να βλέπετε τα έργα σας σε κάθε συσκευή.
