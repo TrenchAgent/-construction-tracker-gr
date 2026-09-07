@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X } from 'lucide-react'
+import { X, Camera, Trash2 } from 'lucide-react'
 import {
   EXPENSE_CATEGORIES,
   VAT_RATE,
@@ -8,6 +8,7 @@ import {
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
 } from '../constants'
+import ReceiptThumbnail from './ReceiptThumbnail'
 
 const emptyForm = () => ({
   kind: 'expense',
@@ -31,7 +32,13 @@ const emptyForm = () => ({
 // storage.js), so editing doesn't re-run the VAT calculation or let you
 // toggle it. You're editing the actual total, e.g. to fix a typo. To
 // change whether VAT applies to an entry, delete it and add it again.
-export default function QuickAddModal({ onClose, onSave, editingEntry }) {
+export default function QuickAddModal({
+  onClose,
+  onSave,
+  editingEntry,
+  onAttachReceipt,
+  onRemoveReceipt,
+}) {
   const isEditing = Boolean(editingEntry)
   const [form, setForm] = useState(() =>
     isEditing
@@ -50,6 +57,43 @@ export default function QuickAddModal({ onClose, onSave, editingEntry }) {
   )
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  // Receipt photo attach/remove happens immediately on its own, separate
+  // from the "Αποθήκευση" button below — it's a file upload, not form
+  // data, and only ever applies to an entry that already has a real id
+  // (see outbox.js / EntryList.jsx for why an offline-queued entry never
+  // reaches edit mode in the first place).
+  const [receiptPath, setReceiptPath] = useState(editingEntry?.receiptPath || '')
+  const [receiptBusy, setReceiptBusy] = useState(false)
+  const [receiptError, setReceiptError] = useState('')
+
+  async function handlePickReceipt(e) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // lets picking the exact same file again later still fire onChange
+    if (!file) return
+    setReceiptBusy(true)
+    setReceiptError('')
+    try {
+      const path = await onAttachReceipt(editingEntry.id, file)
+      setReceiptPath(path)
+    } catch (err) {
+      setReceiptError(err.message || 'Η μεταφόρτωση απέτυχε')
+    } finally {
+      setReceiptBusy(false)
+    }
+  }
+
+  async function handleRemoveReceipt() {
+    setReceiptBusy(true)
+    setReceiptError('')
+    try {
+      await onRemoveReceipt(editingEntry.id, receiptPath)
+      setReceiptPath('')
+    } catch (err) {
+      setReceiptError(err.message || 'Η αφαίρεση απέτυχε')
+    } finally {
+      setReceiptBusy(false)
+    }
+  }
 
   function update(patch) {
     setForm((f) => ({ ...f, ...patch }))
@@ -248,6 +292,46 @@ export default function QuickAddModal({ onClose, onSave, editingEntry }) {
             </button>
           ))}
         </div>
+
+        {isEditing && (
+          <div className="mb-4 pt-3 border-t border-stone-200">
+            <label className="block text-xs text-stone-500 mb-2">
+              Φωτογραφία απόδειξης (προαιρετικό)
+            </label>
+            {receiptPath ? (
+              <div className="flex items-center gap-3">
+                <ReceiptThumbnail path={receiptPath} size={56} />
+                <button
+                  onClick={handleRemoveReceipt}
+                  disabled={receiptBusy}
+                  className="text-xs text-rose-600 inline-flex items-center gap-1 disabled:opacity-60"
+                >
+                  <Trash2 size={13} />
+                  {receiptBusy ? 'Αφαίρεση…' : 'Αφαίρεση φωτογραφίας'}
+                </button>
+              </div>
+            ) : (
+              <label
+                className={
+                  'border border-dashed border-stone-300 rounded-xl py-3 flex items-center justify-center gap-2 text-sm text-stone-500 ' +
+                  (receiptBusy ? 'opacity-60' : 'cursor-pointer')
+                }
+              >
+                <Camera size={16} />
+                {receiptBusy ? 'Μεταφόρτωση…' : 'Προσθήκη φωτογραφίας'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  disabled={receiptBusy}
+                  onChange={handlePickReceipt}
+                />
+              </label>
+            )}
+            {receiptError && <div className="text-xs text-rose-600 mt-2">{receiptError}</div>}
+          </div>
+        )}
 
         {error && <div className="text-xs text-rose-600 mb-2">{error}</div>}
         <button

@@ -41,7 +41,76 @@ function mapEntry(row) {
     date: row.date,
     paymentStatus: row.payment_status,
     paymentMethod: row.payment_method || '',
+    receiptPath: row.receipt_path || '',
   }
+}
+
+const RECEIPTS_BUCKET = 'receipts'
+
+// How long a signed URL stays valid. Re-requested fresh whenever a
+// thumbnail mounts rather than cached/stored anywhere, so this only needs
+// to outlive one render — it's not a durable link.
+const RECEIPT_URL_TTL_SECONDS = 3600
+
+function extensionFor(file) {
+  const fromName = file.name.split('.').pop()
+  if (fromName && fromName.length <= 5 && /^[a-zA-Z0-9]+$/.test(fromName)) return fromName.toLowerCase()
+  const fromType = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic' }
+  return fromType[file.type] || 'jpg'
+}
+
+// Uploads the photo and returns the storage path — the caller still has
+// to write that path onto the entry (setEntryReceiptPath) themselves;
+// these stay separate calls rather than one combined function because
+// the failure modes differ (a failed upload has nothing to roll back; a
+// failed metadata write after a successful upload leaves an orphaned
+// file worth knowing about specifically — see App.jsx).
+export async function uploadReceipt(projectId, entryId, file) {
+  const path = `${projectId}/${entryId}-${Date.now()}.${extensionFor(file)}`
+  const { error } = await supabase.storage.from(RECEIPTS_BUCKET).upload(path, file, {
+    contentType: file.type,
+  })
+  if (error) throw error
+  return path
+}
+
+export async function deleteReceiptFile(path) {
+  if (!path) return
+  const { error } = await supabase.storage.from(RECEIPTS_BUCKET).remove([path])
+  if (error) throw error
+}
+
+// Deletes every receipt file under a project's folder in one call — used
+// when a project itself is deleted (see deleteProject below). Storage
+// objects aren't foreign-keyed to entries, so the "on delete cascade" on
+// entries.project_id never touches them on its own; without this they'd
+// sit there forever, orphaned.
+async function deleteAllReceiptsForProject(projectId) {
+  const { data, error } = await supabase.storage.from(RECEIPTS_BUCKET).list(projectId)
+  if (error) throw error
+  if (!data || data.length === 0) return
+  const paths = data.map((f) => `${projectId}/${f.name}`)
+  const { error: removeError } = await supabase.storage.from(RECEIPTS_BUCKET).remove(paths)
+  if (removeError) throw removeError
+}
+
+export async function getReceiptUrl(path) {
+  const { data, error } = await supabase.storage
+    .from(RECEIPTS_BUCKET)
+    .createSignedUrl(path, RECEIPT_URL_TTL_SECONDS)
+  if (error) throw error
+  return data.signedUrl
+}
+
+export async function setEntryReceiptPath(id, path) {
+  const { data, error } = await supabase
+    .from('entries')
+    .update({ receipt_path: path || null })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return mapEntry(data)
 }
 
 export async function getProjects() {
@@ -116,9 +185,18 @@ export async function updateEntry(id, entry) {
   return mapEntry(data)
 }
 
+// Looks up the entry's own receipt_path first (rather than making the
+// caller pass it in) so every call site gets the cleanup for free instead
+// of having to remember it — deleting an entry always fully removes it.
 export async function deleteEntry(id) {
+  const { data: existing } = await supabase.from('entries').select('receipt_path').eq('id', id).maybeSingle()
   const { error } = await supabase.from('entries').delete().eq('id', id)
   if (error) throw error
+  if (existing?.receipt_path) {
+    // Best-effort: the entry is already gone either way, and a stray
+    // orphaned file is a cleanup nit, not worth failing the delete over.
+    await deleteReceiptFile(existing.receipt_path).catch(() => {})
+  }
 }
 
 export async function updateProject(id, { name, location }) {
@@ -134,8 +212,14 @@ export async function updateProject(id, { name, location }) {
 
 // Cascades to that project's entries (and its collaborator rows)
 // automatically — see the "on delete cascade" foreign keys in
-// supabase/schema.sql.
+// supabase/schema.sql. Receipt files aren't a database row, so that
+// cascade can't reach them — remove them first, while project_id is
+// still valid to filter Storage by (deleting them after would work too,
+// since the folder name doesn't depend on the project row existing, but
+// doing it first means a failure here still blocks the delete instead of
+// leaving the project gone and its receipts orphaned).
 export async function deleteProject(id) {
+  await deleteAllReceiptsForProject(id)
   const { error } = await supabase.from('projects').delete().eq('id', id)
   if (error) throw error
 }

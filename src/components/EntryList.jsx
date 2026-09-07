@@ -6,6 +6,7 @@ import {
   PAYMENT_METHOD_LABELS,
 } from '../constants'
 import { formatEUR } from '../lib/format'
+import ReceiptThumbnail from './ReceiptThumbnail'
 
 export default function EntryList({ entries, canEdit, onEdit, onDelete }) {
   if (entries.length === 0) {
@@ -86,6 +87,7 @@ export default function EntryList({ entries, canEdit, onEdit, onDelete }) {
             key={e.id}
             className="bg-white border border-stone-200 rounded-xl p-3 flex items-start gap-3"
           >
+            {e.receiptPath && <ReceiptThumbnail path={e.receiptPath} />}
             {rowCanEdit ? (
               <button onClick={() => onEdit(e)} className="flex-1 min-w-0 text-left">
                 {details}

@@ -237,6 +237,30 @@ export default function App({ session, onSignOut }) {
     setShowQuickAdd(true)
   }
 
+  // Throws on failure — QuickAddModal displays it. Only ever called for an
+  // entry that's already editable (a real, synced row), so activeId here
+  // is always the entry's actual project.
+  async function attachReceipt(entryId, file) {
+    const path = await storage.uploadReceipt(activeId, entryId, file)
+    try {
+      await storage.setEntryReceiptPath(entryId, path)
+    } catch (err) {
+      // The file made it to Storage but pointing the entry at it failed —
+      // don't leave that file orphaned just because this second half did.
+      await storage.deleteReceiptFile(path).catch(() => {})
+      throw err
+    }
+    setEntries((list) => list.map((e) => (e.id === entryId ? { ...e, receiptPath: path } : e)))
+    return path
+  }
+
+  // Throws on failure — QuickAddModal displays it.
+  async function removeReceipt(entryId, path) {
+    await storage.setEntryReceiptPath(entryId, null)
+    await storage.deleteReceiptFile(path).catch(() => {}) // best-effort; the entry no longer points at it either way
+    setEntries((list) => list.map((e) => (e.id === entryId ? { ...e, receiptPath: '' } : e)))
+  }
+
   async function deleteEntry(id) {
     // A queued-but-not-yet-synced entry (or one that failed to sync, see
     // flushOutbox — either way it's still tagged with its outbox localId,
@@ -397,6 +421,8 @@ export default function App({ session, onSignOut }) {
           onClose={() => setShowQuickAdd(false)}
           onSave={saveEntry}
           editingEntry={editingEntry}
+          onAttachReceipt={attachReceipt}
+          onRemoveReceipt={removeReceipt}
         />
       )}
 

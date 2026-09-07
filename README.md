@@ -112,6 +112,32 @@ project was revoked while the device was offline — it's flagged
 **απέτυχε η αποστολή** ("failed to send") instead of retried forever, so it
 stays visibly unsaved rather than quietly vanishing.
 
+## Receipt photos
+
+Each entry can have one optional photo — a shortcut to attaching a photo
+of the actual paper receipt/invoice. Available once an entry has already
+been saved (open it to edit, then attach) — a brand new entry doesn't
+have a real id yet to attach a photo to, and neither does one still
+queued offline (see **Working with no signal** above), so the photo
+control only shows up once there's a real, synced entry to attach it to.
+A small thumbnail shows on the entry row itself; tap it to see the full
+size photo.
+
+Files live in Supabase Storage, in a private `receipts` bucket — not a
+database table, and not public. Access is enforced by Storage's own Row
+Level Security, using the exact same owner/editor/viewer rules as
+entries themselves (see `supabase/schema.sql`): any project member can
+view a receipt, only the owner or an editor can upload or remove one.
+Capped at 8 MB and image files only (`allowed_mime_types` on the
+bucket), so it can't become a dumping ground for arbitrary large files.
+
+Deleting an entry or a project also deletes its receipt file(s) from
+Storage — those aren't reachable by the "on delete cascade" that cleans
+up database rows, since a Storage object isn't a foreign-keyed row, so
+this is done explicitly in `src/lib/storage.js` (best-effort: a failed
+cleanup doesn't block the actual delete, since a stray orphaned file is
+a nit, not a correctness problem for the user).
+
 ## Sharing a project (collaborators)
 
 A project owner can share a project with someone else's email, at either
@@ -252,7 +278,11 @@ src/
                                      non-owner: CSV export + role info
                                      only (gear icon in the header)
     QuickAddModal.jsx              "add entry" bottom sheet — also handles
-                                    editing an existing entry
+                                    editing an existing entry and
+                                    attaching/removing its receipt photo
+    ReceiptThumbnail.jsx            small clickable receipt photo →
+                                     full-size lightbox on tap. Used by
+                                     both EntryList.jsx and QuickAddModal.jsx
     AccountModal.jsx                subscription status + upgrade button
                                      (person icon in the header)
 public/

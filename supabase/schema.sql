@@ -222,3 +222,56 @@ drop policy if exists "users see own subscription" on subscriptions;
 create policy "users see own subscription" on subscriptions
   for select
   using (auth.uid() = user_id);
+
+-- ---------------------------------------------------------------------
+-- Receipt photos — one optional photo per entry, stored in Supabase
+-- Storage (not a database table) in a private "receipts" bucket. Each
+-- file's path is "<project_id>/<entry_id>-<timestamp>.<ext>" — encoding
+-- the project id directly in the path is what lets the policies below
+-- decide access without a lookup table, using the same is_project_owner /
+-- my_project_role helpers (and so the same owner/editor/viewer rules) as
+-- entries themselves: any project member can view a receipt; only the
+-- owner or an editor can upload or remove one. 8 MB / image-only, so this
+-- can't become a dumping ground for arbitrary large files.
+-- ---------------------------------------------------------------------
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('receipts', 'receipts', false, 8388608, array['image/jpeg', 'image/png', 'image/webp', 'image/heic'])
+on conflict (id) do update
+  set file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
+
+alter table entries add column if not exists receipt_path text;
+
+drop policy if exists "receipts visible to project members" on storage.objects;
+create policy "receipts visible to project members" on storage.objects
+  for select
+  using (
+    bucket_id = 'receipts'
+    and (
+      is_project_owner((storage.foldername(name))[1]::uuid)
+      or my_project_role((storage.foldername(name))[1]::uuid) is not null
+    )
+  );
+
+drop policy if exists "receipts uploadable by owner and editors" on storage.objects;
+create policy "receipts uploadable by owner and editors" on storage.objects
+  for insert
+  with check (
+    bucket_id = 'receipts'
+    and (
+      is_project_owner((storage.foldername(name))[1]::uuid)
+      or my_project_role((storage.foldername(name))[1]::uuid) = 'editor'
+    )
+  );
+
+drop policy if exists "receipts deletable by owner and editors" on storage.objects;
+create policy "receipts deletable by owner and editors" on storage.objects
+  for delete
+  using (
+    bucket_id = 'receipts'
+    and (
+      is_project_owner((storage.foldername(name))[1]::uuid)
+      or my_project_role((storage.foldername(name))[1]::uuid) = 'editor'
+    )
+  );
