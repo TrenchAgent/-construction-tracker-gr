@@ -1,4 +1,4 @@
-import { WifiOff, TriangleAlert, Trash2 } from 'lucide-react'
+import { WifiOff, TriangleAlert, Trash2, Copy } from 'lucide-react'
 import {
   CATEGORY_BADGE_STYLES,
   PAYMENT_STATUS_LABELS,
@@ -8,7 +8,7 @@ import {
 import { formatEUR } from '../lib/format'
 import ReceiptThumbnail from './ReceiptThumbnail'
 
-export default function EntryList({ entries, filtersActive, canEdit, onEdit, onDelete }) {
+export default function EntryList({ entries, filtersActive, canEdit, onEdit, onDuplicate, onDelete }) {
   if (entries.length === 0) {
     return (
       <div className="text-sm text-stone-400 text-center py-10">
@@ -108,19 +108,28 @@ export default function EntryList({ entries, filtersActive, canEdit, onEdit, onD
                 {formatEUR(e.amount)}
               </div>
               {canEdit && (
-                <button
-                  onClick={() => {
-                    const confirmed = window.confirm(
-                      `Διαγραφή της καταχώρησης «${e.note}» (${formatEUR(e.amount)}); ` +
-                        'Μπορείτε να την αναιρέσετε για λίγα δευτερόλεπτα μετά.',
-                    )
-                    if (confirmed) onDelete(e.id)
-                  }}
-                  className="text-stone-300 hover:text-rose-600 mt-1 text-xs inline-flex items-center gap-0.5"
-                >
-                  <Trash2 size={11} />
-                  Διαγραφή
-                </button>
+                <div className="flex items-center gap-2 justify-end mt-1">
+                  <button
+                    onClick={() => onDuplicate(e)}
+                    className="text-stone-300 hover:text-orange-700 text-xs inline-flex items-center gap-0.5"
+                  >
+                    <Copy size={11} />
+                    Αντιγραφή
+                  </button>
+                  <button
+                    onClick={() => {
+                      const confirmed = window.confirm(
+                        `Διαγραφή της καταχώρησης «${e.note}» (${formatEUR(e.amount)}); ` +
+                          'Μπορείτε να την αναιρέσετε για λίγα δευτερόλεπτα μετά.',
+                      )
+                      if (confirmed) onDelete(e.id)
+                    }}
+                    className="text-stone-300 hover:text-rose-600 text-xs inline-flex items-center gap-0.5"
+                  >
+                    <Trash2 size={11} />
+                    Διαγραφή
+                  </button>
+                </div>
               )}
             </div>
           </div>

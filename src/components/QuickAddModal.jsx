@@ -10,10 +10,15 @@ import {
 } from '../constants'
 import ReceiptThumbnail from './ReceiptThumbnail'
 
-const emptyForm = () => ({
+// defaultCategory/defaultVendor: whatever was last used in this project
+// (see App.jsx) — saves re-picking the same category and re-typing the
+// same supplier on every entry when you're logging a run of similar
+// ones, without forcing it on genuinely different entries (still just a
+// starting point, both stay fully editable).
+const emptyForm = (defaultCategory, defaultVendor) => ({
   kind: 'expense',
-  category: EXPENSE_CATEGORIES[0],
-  vendor: '',
+  category: defaultCategory || EXPENSE_CATEGORIES[0],
+  vendor: defaultVendor || '',
   note: '',
   amount: '',
   vat: false,
@@ -26,6 +31,31 @@ const emptyForm = () => ({
   paymentMethod: '',
 })
 
+// duplicateFrom: pre-fill a new entry from an existing one's values,
+// except the date (today, not the original's) — the point is repeating a
+// similar entry quickly, not literally re-dating the same transaction.
+// The stored amount is already VAT-inclusive if VAT was on (see the note
+// above the component) — reverse the markup here so the amount field
+// shows the same pre-VAT figure the original was created from, letting
+// the normal create-time VAT math re-apply it exactly like a fresh entry,
+// instead of quietly compounding VAT on an already-final number.
+function duplicateForm(source) {
+  const isExpense = source.kind === 'expense'
+  const preVatAmount =
+    isExpense && source.vat ? Math.round((source.amount / (1 + VAT_RATE)) * 100) / 100 : source.amount
+  return {
+    kind: source.kind,
+    category: isExpense ? source.category : EXPENSE_CATEGORIES[0],
+    vendor: source.vendor || '',
+    note: source.note,
+    amount: String(preVatAmount),
+    vat: isExpense ? source.vat : false,
+    date: new Date().toISOString().slice(0, 10),
+    paymentStatus: source.paymentStatus,
+    paymentMethod: source.paymentMethod || '',
+  }
+}
+
 // editingEntry: pass an existing entry to edit it in place instead of
 // creating a new one. Note on VAT in edit mode: the stored `amount` is
 // already the final, VAT-inclusive value (that's what's on disk — see
@@ -36,25 +66,30 @@ export default function QuickAddModal({
   onClose,
   onSave,
   editingEntry,
+  duplicateFrom,
+  defaultCategory,
+  defaultVendor,
   onAttachReceipt,
   onRemoveReceipt,
 }) {
   const isEditing = Boolean(editingEntry)
-  const [form, setForm] = useState(() =>
-    isEditing
-      ? {
-          kind: editingEntry.kind,
-          category: editingEntry.kind === 'expense' ? editingEntry.category : EXPENSE_CATEGORIES[0],
-          vendor: editingEntry.vendor,
-          note: editingEntry.note,
-          amount: String(editingEntry.amount),
-          vat: editingEntry.vat,
-          date: editingEntry.date,
-          paymentStatus: editingEntry.paymentStatus,
-          paymentMethod: editingEntry.paymentMethod || '',
-        }
-      : emptyForm(),
-  )
+  const [form, setForm] = useState(() => {
+    if (isEditing) {
+      return {
+        kind: editingEntry.kind,
+        category: editingEntry.kind === 'expense' ? editingEntry.category : EXPENSE_CATEGORIES[0],
+        vendor: editingEntry.vendor,
+        note: editingEntry.note,
+        amount: String(editingEntry.amount),
+        vat: editingEntry.vat,
+        date: editingEntry.date,
+        paymentStatus: editingEntry.paymentStatus,
+        paymentMethod: editingEntry.paymentMethod || '',
+      }
+    }
+    if (duplicateFrom) return duplicateForm(duplicateFrom)
+    return emptyForm(defaultCategory, defaultVendor)
+  })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   // Receipt photo attach/remove happens immediately on its own, separate
@@ -144,7 +179,11 @@ export default function QuickAddModal({
       >
         <div className="flex items-center mb-4">
           <h3 className="font-semibold">
-            {isEditing ? 'Επεξεργασία καταχώρησης' : 'Νέα καταχώρηση'}
+            {isEditing
+              ? 'Επεξεργασία καταχώρησης'
+              : duplicateFrom
+                ? 'Νέα καταχώρηση (αντίγραφο)'
+                : 'Νέα καταχώρηση'}
           </h3>
           <button onClick={onClose} className="ml-auto text-stone-400 p-1 -m-1">
             <X size={18} />

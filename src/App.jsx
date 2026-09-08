@@ -65,6 +65,7 @@ export default function App({ session, onSignOut }) {
   const [showNewProject, setShowNewProject] = useState(false)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
   const [editingEntry, setEditingEntry] = useState(null)
+  const [duplicateFrom, setDuplicateFrom] = useState(null)
   const [showProjectSettings, setShowProjectSettings] = useState(false)
   const [showAccount, setShowAccount] = useState(checkoutParam === 'success')
   const [pendingCount, setPendingCount] = useState(0)
@@ -280,11 +281,19 @@ export default function App({ session, onSignOut }) {
 
   function openQuickAdd() {
     setEditingEntry(null)
+    setDuplicateFrom(null)
     setShowQuickAdd(true)
   }
 
   function openEditEntry(entry) {
     setEditingEntry(entry)
+    setDuplicateFrom(null)
+    setShowQuickAdd(true)
+  }
+
+  function openDuplicateEntry(entry) {
+    setEditingEntry(null)
+    setDuplicateFrom(entry)
     setShowQuickAdd(true)
   }
 
@@ -434,6 +443,15 @@ export default function App({ session, onSignOut }) {
   const visibleProjects = pendingDeleteProjectId
     ? projects.filter((p) => p.id !== pendingDeleteProjectId)
     : projects
+  // Whatever category/vendor was used on the most recently added expense
+  // in this project — QuickAddModal starts a brand new entry there
+  // instead of always resetting to "Υλικά" / blank, since logging a run
+  // of similar entries (the same supplier, several days running) is a
+  // real, common pattern this saves real re-picking/re-typing on.
+  // visibleEntries is already newest-first (see storage.getEntries and
+  // how new entries get prepended), so the first expense in it is "last
+  // used" — income entries don't have a real category/vendor to reuse.
+  const lastExpense = visibleEntries.find((e) => e.kind === 'expense')
 
   const income = visibleEntries.filter((e) => e.kind === 'income').reduce((s, e) => s + e.amount, 0)
   const expense = visibleEntries.filter((e) => e.kind === 'expense').reduce((s, e) => s + e.amount, 0)
@@ -528,6 +546,7 @@ export default function App({ session, onSignOut }) {
             filtersActive={isFilterActive(filters)}
             canEdit={canEdit}
             onEdit={openEditEntry}
+            onDuplicate={openDuplicateEntry}
             onDelete={deleteEntry}
           />
         </div>
@@ -553,6 +572,9 @@ export default function App({ session, onSignOut }) {
           onClose={() => setShowQuickAdd(false)}
           onSave={saveEntry}
           editingEntry={editingEntry}
+          duplicateFrom={duplicateFrom}
+          defaultCategory={lastExpense?.category}
+          defaultVendor={lastExpense?.vendor}
           onAttachReceipt={attachReceipt}
           onRemoveReceipt={removeReceipt}
         />

@@ -87,6 +87,24 @@ RLS-based access control entries already have (`security_invoker`, see
 the comment above it in schema.sql), so it needs no policy of its own and
 can't leak totals from a project you're not on.
 
+## Faster repeat entry
+
+Opening **+ Νέα καταχώρηση** for a brand new entry pre-fills the category
+and vendor from the most recently added expense in that project, instead
+of always resetting to Υλικά / blank — logging a run of similar entries
+(same supplier, several days running) doesn't mean re-picking and
+re-typing the same two fields every time. Everything else still starts
+empty, and both fields stay fully editable — it's a starting point, not
+a lock.
+
+Each entry also has an **Αντιγραφή** (duplicate) action: opens a new
+entry pre-filled with that entry's values, except the date (today, not
+the original's). If the original had VAT applied, the amount shown is
+the same pre-VAT figure it was originally created from (reverse-computed
+from the stored final amount), not the final total — saving re-applies
+VAT through the normal create-time math instead of compounding it on an
+already-final number.
+
 ## Deleting things: confirm, then a real undo window
 
 Deleting an entry or a project always asks for confirmation first
