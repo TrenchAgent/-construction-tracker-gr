@@ -12,9 +12,17 @@ import NewProjectModal from './components/NewProjectModal'
 import QuickAddModal from './components/QuickAddModal'
 import ProjectSettingsModal from './components/ProjectSettingsModal'
 import AccountModal from './components/AccountModal'
+import UndoToast from './components/UndoToast'
 import * as storage from './lib/storage'
 import * as outbox from './lib/outbox'
 import { entriesToCsv, slugifyFilename, downloadCsv } from './lib/csv'
+
+// How long a delete stays undoable before it's actually sent to the
+// server. Not just a visual delay — the real delete call itself doesn't
+// happen until this expires (see startPendingDelete/finalizePendingDelete
+// below), so "Undo" genuinely means "never send it," not "put back
+// something already gone."
+const UNDO_WINDOW_MS = 5000
 
 // A network-layer failure (no connection at all) looks different from a
 // real server rejection (bad data, RLS denial, etc.) — supabase-js's
@@ -66,6 +74,15 @@ export default function App({ session, onSignOut }) {
   const [showOverview, setShowOverview] = useState(true)
   const [summaries, setSummaries] = useState(new Map())
   const [filters, setFilters] = useState(EMPTY_FILTERS)
+  // { kind: 'entry' | 'project', id, label, timeoutId } | null — see
+  // startPendingDelete/finalizePendingDelete/undoPendingDelete below.
+  // Only one at a time: a second delete while one's still pending
+  // finalizes the first immediately rather than stacking undo windows.
+  const [pendingDelete, setPendingDelete] = useState(null)
+  const pendingDeleteRef = useRef(null)
+  useEffect(() => {
+    pendingDeleteRef.current = pendingDelete
+  }, [pendingDelete])
 
   // flushOutbox (below) is called from the 'online' event listener, which
   // can fire long after the render that registered it — a plain closure
@@ -100,6 +117,17 @@ export default function App({ session, onSignOut }) {
   async function flushOutbox() {
     const queue = outbox.loadQueue(session.user.id)
     for (const item of queue) {
+      // This item is mid-undo-window for its own deletion — leave it
+      // queued and skip it this pass. Syncing it now would race the
+      // pending delete: it'd get a real id just as (or after) the undo
+      // window finalizes a delete keyed to the old local id, and either
+      // silently reappear on undo (already re-synced under a new id the
+      // undo doesn't know about) or leave a freshly-synced row nothing
+      // ever deletes. Simplest correct fix is to just wait it out — the
+      // next flush (undone, or the item's already gone) picks it up clean.
+      if (pendingDeleteRef.current?.kind === 'entry' && pendingDeleteRef.current.id === item.localId) {
+        continue
+      }
       try {
         const saved = await storage.addEntry(item.projectId, item.entry)
         outbox.dequeue(session.user.id, item.localId)
@@ -284,23 +312,75 @@ export default function App({ session, onSignOut }) {
     setEntries((list) => list.map((e) => (e.id === entryId ? { ...e, receiptPath: '' } : e)))
   }
 
-  async function deleteEntry(id) {
-    // A queued-but-not-yet-synced entry (or one that failed to sync, see
-    // flushOutbox — either way it's still tagged with its outbox localId,
-    // not a real database id) has no real row on the server yet. Nothing
-    // to delete remotely, just drop it from the local queue and the list.
-    if (String(id).startsWith('local-')) {
-      outbox.dequeue(session.user.id, id) // no-op if flushOutbox already removed it
-      setEntries((list) => list.filter((e) => e.id !== id))
-      setPendingCount(outbox.queueLength(session.user.id))
-      return
+  // Actually performs a deferred delete — called when its undo window
+  // expires, or immediately if a new delete supersedes a still-pending
+  // one. Nothing calls the real storage.delete* functions anywhere else;
+  // this is the only place a delete becomes real and permanent.
+  async function finalizePendingDelete(pending) {
+    if (!pending) return
+    if (pending.kind === 'entry') {
+      if (String(pending.id).startsWith('local-')) {
+        // Never made it to the server — nothing to delete remotely, just
+        // drop it from the local queue for good.
+        outbox.dequeue(session.user.id, pending.id)
+        setEntries((list) => list.filter((e) => e.id !== pending.id))
+        setPendingCount(outbox.queueLength(session.user.id))
+        return
+      }
+      try {
+        await storage.deleteEntry(pending.id)
+        setEntries((list) => list.filter((e) => e.id !== pending.id))
+      } catch (err) {
+        setError(err.message || 'Η διαγραφή απέτυχε')
+      }
+    } else if (pending.kind === 'project') {
+      try {
+        await storage.deleteProject(pending.id)
+        setProjects((list) => list.filter((p) => p.id !== pending.id))
+        setSummaries((prev) => {
+          const next = new Map(prev)
+          next.delete(pending.id)
+          return next
+        })
+      } catch (err) {
+        setError(err.message || 'Η διαγραφή απέτυχε')
+      }
     }
-    try {
-      await storage.deleteEntry(id)
-      setEntries((list) => list.filter((e) => e.id !== id))
-    } catch (err) {
-      setError(err.message || 'Η διαγραφή απέτυχε')
+  }
+
+  // Starts (or restarts) the undo window for one delete. The item stays
+  // exactly where it is in state the whole time — see the render-time
+  // visibleEntries/visibleProjects filters below — so "undo" is just
+  // "never mind, forget this pending delete" with nothing to restore,
+  // and a stale re-fetch mid-window (switching projects and back, e.g.)
+  // can't accidentally revive something that's genuinely gone, because
+  // nothing's gone yet.
+  function startPendingDelete(kind, id, label) {
+    if (pendingDeleteRef.current) {
+      clearTimeout(pendingDeleteRef.current.timeoutId)
+      finalizePendingDelete(pendingDeleteRef.current)
     }
+    const timeoutId = setTimeout(() => {
+      const current = pendingDeleteRef.current
+      setPendingDelete(null)
+      finalizePendingDelete(current)
+    }, UNDO_WINDOW_MS)
+    setPendingDelete({ kind, id, label, timeoutId })
+  }
+
+  function undoPendingDelete() {
+    if (!pendingDeleteRef.current) return
+    clearTimeout(pendingDeleteRef.current.timeoutId)
+    setPendingDelete(null)
+  }
+
+  // Confirmation happens at the call site (EntryList has the entry's own
+  // note/amount to put in the message) — by the time this runs, the user
+  // has already said yes. This only starts the undo window; the actual
+  // delete is deferred (see finalizePendingDelete).
+  function deleteEntry(id) {
+    const entry = entries.find((e) => e.id === id)
+    startPendingDelete('entry', id, entry ? `Διαγράφηκε: «${entry.note}»` : 'Η καταχώρηση διαγράφηκε')
   }
 
   // Throws on failure — ProjectSettingsModal displays it.
@@ -309,25 +389,24 @@ export default function App({ session, onSignOut }) {
     setProjects((list) => list.map((p) => (p.id === saved.id ? { ...saved, role: p.role } : p)))
   }
 
-  // Throws on failure — ProjectSettingsModal displays it. Goes back to
-  // the overview afterward rather than auto-picking some other project —
-  // deleting one is a "back to my project list" moment, not a cue to
-  // silently land the user somewhere else they didn't choose.
-  async function removeProject() {
-    await storage.deleteProject(activeId)
-    const remaining = projects.filter((p) => p.id !== activeId)
-    setProjects(remaining)
+  // Confirmation already happened in ProjectSettingsModal before this is
+  // called. Goes back to the overview right away rather than auto-picking
+  // some other project — deleting one is a "back to my project list"
+  // moment — while the card itself stays hidden there (visibleProjects
+  // below) until the undo window actually finalizes the delete.
+  function removeProject() {
+    startPendingDelete('project', activeId, `Διαγράφηκε: «${activeProject?.name}»`)
     setActiveId(null)
     setEntries([])
-    if (remaining.length) {
-      await goToOverview()
+    if (projects.length > 1) {
+      goToOverview()
     } else {
-      setShowOverview(false) // nothing to show an overview of — EmptyState instead
+      setShowOverview(false) // nothing left to show an overview of — EmptyState instead
     }
   }
 
   function exportCsv() {
-    const csv = entriesToCsv(entries)
+    const csv = entriesToCsv(visibleEntries)
     const today = new Date().toISOString().slice(0, 10)
     downloadCsv(`${slugifyFilename(activeProject.name)}-${today}.csv`, csv)
   }
@@ -343,13 +422,26 @@ export default function App({ session, onSignOut }) {
     await storage.removeCollaborator(id)
   }
 
-  const income = entries.filter((e) => e.kind === 'income').reduce((s, e) => s + e.amount, 0)
-  const expense = entries.filter((e) => e.kind === 'expense').reduce((s, e) => s + e.amount, 0)
+  // A pending-deleted entry/project stays in real state the whole undo
+  // window (see startPendingDelete) and is only filtered out of what's
+  // actually rendered/totaled here — that's what makes undo trivial and
+  // safe against an unrelated re-fetch landing mid-window.
+  const pendingDeleteEntryId = pendingDelete?.kind === 'entry' ? pendingDelete.id : null
+  const pendingDeleteProjectId = pendingDelete?.kind === 'project' ? pendingDelete.id : null
+  const visibleEntries = pendingDeleteEntryId
+    ? entries.filter((e) => e.id !== pendingDeleteEntryId)
+    : entries
+  const visibleProjects = pendingDeleteProjectId
+    ? projects.filter((p) => p.id !== pendingDeleteProjectId)
+    : projects
+
+  const income = visibleEntries.filter((e) => e.kind === 'income').reduce((s, e) => s + e.amount, 0)
+  const expense = visibleEntries.filter((e) => e.kind === 'expense').reduce((s, e) => s + e.amount, 0)
   const profit = income - expense
   // "Outstanding" = not fully settled yet — pending or partially paid.
   // Applies across both income (money owed to you) and expenses (money
   // you owe), since both are equally real to track.
-  const pendingAmount = entries
+  const pendingAmount = visibleEntries
     .filter((e) => e.paymentStatus === 'pending' || e.paymentStatus === 'partial')
     .reduce((s, e) => s + e.amount, 0)
   const activeProject = projects.find((p) => p.id === activeId)
@@ -357,7 +449,7 @@ export default function App({ session, onSignOut }) {
   // Filtering only narrows what's shown in the list below — the totals
   // above (income/expense/profit/pending, time breakdown) always reflect
   // the whole project, not just whatever's currently filtered into view.
-  const filteredEntries = applyEntryFilters(entries, filters)
+  const filteredEntries = applyEntryFilters(visibleEntries, filters)
 
   if (loading) {
     return (
@@ -402,7 +494,7 @@ export default function App({ session, onSignOut }) {
         <EmptyState onNewProject={() => setShowNewProject(true)} />
       ) : showOverview ? (
         <ProjectsOverview
-          projects={projects}
+          projects={visibleProjects}
           summaries={summaries}
           onSelectProject={switchProject}
           onNewProject={() => setShowNewProject(true)}
@@ -416,7 +508,7 @@ export default function App({ session, onSignOut }) {
             pendingAmount={pendingAmount}
           />
 
-          <TimeBreakdown entries={entries} />
+          <TimeBreakdown entries={visibleEntries} />
 
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-stone-700">Καταχωρήσεις</h3>
@@ -429,7 +521,7 @@ export default function App({ session, onSignOut }) {
             </button>
           </div>
 
-          {entries.length > 0 && <EntryFilterBar filters={filters} onChange={setFilters} />}
+          {visibleEntries.length > 0 && <EntryFilterBar filters={filters} onChange={setFilters} />}
 
           <EntryList
             entries={filteredEntries}
@@ -486,6 +578,8 @@ export default function App({ session, onSignOut }) {
           onClose={() => setShowAccount(false)}
         />
       )}
+
+      <UndoToast pending={pendingDelete} onUndo={undoPendingDelete} durationMs={UNDO_WINDOW_MS} />
     </div>
   )
 }

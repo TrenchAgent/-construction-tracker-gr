@@ -158,20 +158,19 @@ export default function ProjectSettingsModal({
     }
   }
 
-  async function handleDelete() {
+  // onDelete only starts the undo window now (see App.jsx's
+  // startPendingDelete) — it doesn't call the server or throw, so there's
+  // nothing here to await or catch. A genuine failure surfaces later,
+  // asynchronously, via the app-level error banner once the undo window
+  // actually finalizes the delete.
+  function handleDelete() {
     const confirmed = window.confirm(
-      `Διαγραφή του έργου «${project.name}»; Θα διαγραφούν μόνιμα και όλες οι καταχωρήσεις του. Δεν αναιρείται.`,
+      `Διαγραφή του έργου «${project.name}»; Θα διαγραφούν και όλες οι καταχωρήσεις του. ` +
+        'Μπορείτε να το αναιρέσετε για λίγα δευτερόλεπτα μετά.',
     )
     if (!confirmed) return
-    setBusy(true)
-    setError('')
-    try {
-      await onDelete()
-      onClose()
-    } catch (err) {
-      setError(err.message || 'Η διαγραφή απέτυχε')
-      setBusy(false)
-    }
+    onDelete()
+    onClose()
   }
 
   return (

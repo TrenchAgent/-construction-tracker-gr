@@ -87,6 +87,29 @@ RLS-based access control entries already have (`security_invoker`, see
 the comment above it in schema.sql), so it needs no policy of its own and
 can't leak totals from a project you're not on.
 
+## Deleting things: confirm, then a real undo window
+
+Deleting an entry or a project always asks for confirmation first
+(`window.confirm`, naming what you're about to delete). After confirming,
+it disappears immediately and a toast at the bottom offers **Αναίρεση**
+(Undo) for 5 seconds.
+
+This is a genuine undo, not a visual trick: the actual delete request to
+the database isn't sent until that window expires. "Undo" just means
+"never mind, don't send it" — there's nothing to restore because nothing
+was ever deleted, which is also why it's safe against things like
+switching away and back to the project mid-window (nothing re-fetches a
+row that's still there). Deleting a second thing while one delete is
+still pending finalizes the first one for real right away, rather than
+stacking multiple undo windows.
+
+The one extra wrinkle: deleting an entry that's still offline-queued
+(added with no connection, not yet synced — see below) starts the same
+undo window, but the sync engine is taught to leave that specific item
+alone while it's pending — otherwise a connection returning mid-undo
+could sync the entry instant before the delete finalizes, deleting a
+now-different (real id) row than the one "Undo" thinks it's holding.
+
 ## Filtering the entry list
 
 A project's entry list has a search box (matches note or vendor) plus a
@@ -325,6 +348,8 @@ src/
                                      both EntryList.jsx and QuickAddModal.jsx
     AccountModal.jsx                subscription status + upgrade button
                                      (person icon in the header)
+    UndoToast.jsx                    the "Undo" bar after a delete — see
+                                      Deleting things above
 public/
   icon.svg, icon-192.png, icon-512.png   app icons (used by the PWA manifest)
 netlify/functions/

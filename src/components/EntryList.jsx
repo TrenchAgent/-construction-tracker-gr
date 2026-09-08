@@ -109,7 +109,13 @@ export default function EntryList({ entries, filtersActive, canEdit, onEdit, onD
               </div>
               {canEdit && (
                 <button
-                  onClick={() => onDelete(e.id)}
+                  onClick={() => {
+                    const confirmed = window.confirm(
+                      `Διαγραφή της καταχώρησης «${e.note}» (${formatEUR(e.amount)}); ` +
+                        'Μπορείτε να την αναιρέσετε για λίγα δευτερόλεπτα μετά.',
+                    )
+                    if (confirmed) onDelete(e.id)
+                  }}
                   className="text-stone-300 hover:text-rose-600 mt-1 text-xs inline-flex items-center gap-0.5"
                 >
                   <Trash2 size={11} />
