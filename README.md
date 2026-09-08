@@ -46,11 +46,13 @@ never talk to Supabase directly.
 
 ## What's in v1 (and what's deliberately left out)
 
-**Included:** projects (name + optional location, editable, deletable —
-deleting a project deletes its entries too), quick-add entries (income or
-expense, amount, optional VAT 24%, optional vendor, required note, date,
-payment status, optional payment method), editable and deletable
-individual entries, a dashboard with income/expense/profit totals, an
+**Included:** an all-projects overview as the home screen (every project
+as a card — profit/loss and outstanding amount at a glance — see below),
+projects (name + optional location, editable, deletable — deleting a
+project deletes its entries too), quick-add entries (income or expense,
+amount, optional VAT 24%, optional vendor, required note, date, payment
+status, optional payment method), editable and deletable individual
+entries, a dashboard with income/expense/profit totals, an
 outstanding-amounts card, a Today/This week/This month breakdown, a
 reverse-chronological entry list, CSV export per project, and inviting a
 collaborator (viewer or editor) to a specific project by email. Sign-in
@@ -67,6 +69,23 @@ add it again.
 wanted): tax ID (ΑΦΜ) capture, a transportation cost field, rate
 analysis, business overheads, work-area tagging, labour attendance, and
 finer-grained material categories.
+
+## All-projects overview
+
+Signing in lands on an overview screen — one card per project (name,
+location, profit/loss, outstanding amount), before picking any single
+one — for someone running several projects at once who wants to see
+what needs attention without opening each one in turn. Tap a card to go
+into that project's dashboard; tap the crane icon in the header (now a
+button, not just a logo) to come back. Card totals refresh every time you
+return to the overview, so they don't go stale mid-session.
+
+The per-project totals come from a small database view
+(`project_summaries` in `supabase/schema.sql`) rather than fetching every
+entry of every project just to add them up — it inherits the same
+RLS-based access control entries already have (`security_invoker`, see
+the comment above it in schema.sql), so it needs no policy of its own and
+can't leak totals from a project you're not on.
 
 ## Payment tracking and time breakdown
 
@@ -265,7 +284,11 @@ src/
     LoginScreen.jsx              email sign-in form (sends the link)
     Header.jsx                   top bar, project switcher, sign-out,
                                   "Συνεργασία" badge on shared projects
-    EmptyState.jsx                "no project yet" screen
+    EmptyState.jsx                "no project yet" screen (zero projects
+                                   at all — different from the overview
+                                   below, which needs at least one)
+    ProjectsOverview.jsx           home screen — a card per project,
+                                    tap one to open it
     DashboardSummary.jsx          income/expense/profit/outstanding cards
     TimeBreakdown.jsx              Σήμερα / Αυτή την εβδομάδα / Αυτόν τον
                                     μήνα income+expense breakdown

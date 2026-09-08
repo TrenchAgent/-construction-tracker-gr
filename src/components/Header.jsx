@@ -2,18 +2,29 @@ import { HardHat, Settings, User, LogOut } from 'lucide-react'
 
 export default function Header({
   activeProject,
-  projects,
-  activeId,
-  onSwitchProject,
+  showOverview,
+  onGoHome,
   onOpenProjectSettings,
   onOpenAccount,
   onSignOut,
 }) {
+  const inProject = !showOverview && Boolean(activeProject)
+
   return (
     <div className="sticky top-0 bg-stone-50 border-b border-stone-200 px-4 py-3 flex items-center gap-1.5 z-10">
-      <HardHat className="w-5 h-5 text-orange-700 shrink-0" strokeWidth={2.25} />
+      {inProject ? (
+        <button
+          onClick={onGoHome}
+          className="text-orange-700 shrink-0 p-1.5 -ml-1.5 rounded-lg hover:bg-stone-200/60"
+          aria-label="Όλα τα έργα"
+        >
+          <HardHat className="w-5 h-5" strokeWidth={2.25} />
+        </button>
+      ) : (
+        <HardHat className="w-5 h-5 text-orange-700 shrink-0" strokeWidth={2.25} />
+      )}
       <div className="flex-1 min-w-0 ml-1">
-        {activeProject ? (
+        {inProject ? (
           <>
             <div className="font-semibold truncate flex items-center gap-1.5">
               <span className="truncate">{activeProject.name}</span>
@@ -31,7 +42,7 @@ export default function Header({
           <div className="font-semibold">Διαχείριση Έργου</div>
         )}
       </div>
-      {activeProject && (
+      {inProject && (
         <button
           onClick={onOpenProjectSettings}
           className="text-stone-400 hover:text-stone-600 hover:bg-stone-200/60 shrink-0 p-1.5 rounded-lg"
@@ -39,19 +50,6 @@ export default function Header({
         >
           <Settings className="w-4 h-4" />
         </button>
-      )}
-      {projects.length > 1 && (
-        <select
-          className="text-xs border border-stone-300 rounded-lg px-2 py-1 bg-white max-w-[110px]"
-          value={activeId || ''}
-          onChange={(e) => onSwitchProject(e.target.value)}
-        >
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
       )}
       <button
         onClick={onOpenAccount}

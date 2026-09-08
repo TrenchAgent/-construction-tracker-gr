@@ -122,6 +122,24 @@ export async function getProjects() {
   return data.map(mapProject)
 }
 
+// One row per project with entries (a project with none just doesn't
+// appear — callers should treat a missing id as all-zero, not an error).
+// Powers the all-projects overview screen; see the view's own comment in
+// schema.sql for why this doesn't need its own RLS policy.
+export async function getProjectSummaries() {
+  const { data, error } = await supabase.from('project_summaries').select('*')
+  if (error) throw error
+  const byProjectId = new Map()
+  for (const row of data) {
+    byProjectId.set(row.project_id, {
+      income: Number(row.income),
+      expense: Number(row.expense),
+      pendingAmount: Number(row.pending_amount),
+    })
+  }
+  return byProjectId
+}
+
 export async function addProject({ name, location }) {
   const { data, error } = await supabase
     .from('projects')

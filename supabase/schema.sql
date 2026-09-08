@@ -275,3 +275,25 @@ create policy "receipts deletable by owner and editors" on storage.objects
       or my_project_role((storage.foldername(name))[1]::uuid) = 'editor'
     )
   );
+
+-- ---------------------------------------------------------------------
+-- project_summaries — per-project totals for the all-projects overview
+-- screen, computed server-side so it doesn't have to fetch every entry
+-- of every project just to show a card. security_invoker means this
+-- view runs with the CALLING user's own permissions, not its owner's —
+-- so it's automatically scoped by entries' existing RLS (project
+-- members only), with no separate policy needed on the view itself.
+-- ---------------------------------------------------------------------
+
+create or replace view project_summaries
+with (security_invoker = true)
+as
+select
+  project_id,
+  coalesce(sum(amount) filter (where kind = 'income'), 0) as income,
+  coalesce(sum(amount) filter (where kind = 'expense'), 0) as expense,
+  coalesce(sum(amount) filter (where payment_status in ('pending', 'partial')), 0) as pending_amount
+from entries
+group by project_id;
+
+grant select on project_summaries to authenticated;

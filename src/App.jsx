@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { X, WifiOff, Plus } from 'lucide-react'
 import Header from './components/Header'
 import EmptyState from './components/EmptyState'
+import ProjectsOverview from './components/ProjectsOverview'
 import DashboardSummary from './components/DashboardSummary'
 import TimeBreakdown from './components/TimeBreakdown'
 import EntryList from './components/EntryList'
@@ -57,6 +58,11 @@ export default function App({ session, onSignOut }) {
   const [showProjectSettings, setShowProjectSettings] = useState(false)
   const [showAccount, setShowAccount] = useState(checkoutParam === 'success')
   const [pendingCount, setPendingCount] = useState(0)
+  // Shown before any single project is picked — see ProjectsOverview.jsx.
+  // Starts true; the initial-load effect below only flips it once it
+  // knows whether there's actually anything to show an overview OF.
+  const [showOverview, setShowOverview] = useState(true)
+  const [summaries, setSummaries] = useState(new Map())
 
   // flushOutbox (below) is called from the 'online' event listener, which
   // can fire long after the render that registered it — a plain closure
@@ -143,19 +149,19 @@ export default function App({ session, onSignOut }) {
     let cancelled = false
     async function load() {
       try {
-        const [rawProjects, myCollaborations] = await Promise.all([
+        const [rawProjects, myCollaborations, projectSummaries] = await Promise.all([
           storage.getProjects(),
           storage.getMyCollaborations(session.user.email),
+          storage.getProjectSummaries(),
         ])
         if (cancelled) return
         const list = attachRoles(rawProjects, myCollaborations, session.user.id)
         setProjects(list)
-        if (list.length) {
-          setActiveId(list[0].id)
-          const entryList = await storage.getEntries(list[0].id)
-          if (cancelled) return
-          setEntries(mergeQueuedIntoEntries(list[0].id, entryList))
-        }
+        setSummaries(projectSummaries)
+        // Land on the overview whenever there's anything to show on it —
+        // no auto-picking a "first" project and fetching its entries
+        // before the user has actually chosen to look at it.
+        setShowOverview(list.length > 0)
         setPendingCount(outbox.queueLength(session.user.id))
       } catch (err) {
         if (!cancelled) setError(err.message || 'Σφάλμα φόρτωσης δεδομένων')
@@ -173,6 +179,7 @@ export default function App({ session, onSignOut }) {
 
   async function switchProject(id) {
     setActiveId(id)
+    setShowOverview(false)
     try {
       const fresh = await storage.getEntries(id)
       setEntries(mergeQueuedIntoEntries(id, fresh))
@@ -182,6 +189,18 @@ export default function App({ session, onSignOut }) {
       // it rather than an empty list, since those are real, just unsynced.
       setEntries(mergeQueuedIntoEntries(id, []))
       setError(err.message || 'Σφάλμα φόρτωσης καταχωρήσεων')
+    }
+  }
+
+  // Re-fetches summaries on the way back — whatever was just added/edited/
+  // deleted in the project the user's leaving should already be reflected
+  // on its card, not stale until the next full reload.
+  async function goToOverview() {
+    setShowOverview(true)
+    try {
+      setSummaries(await storage.getProjectSummaries())
+    } catch (err) {
+      setError(err.message || 'Σφάλμα φόρτωσης έργων')
     }
   }
 
@@ -286,16 +305,20 @@ export default function App({ session, onSignOut }) {
     setProjects((list) => list.map((p) => (p.id === saved.id ? { ...saved, role: p.role } : p)))
   }
 
-  // Throws on failure — ProjectSettingsModal displays it.
+  // Throws on failure — ProjectSettingsModal displays it. Goes back to
+  // the overview afterward rather than auto-picking some other project —
+  // deleting one is a "back to my project list" moment, not a cue to
+  // silently land the user somewhere else they didn't choose.
   async function removeProject() {
     await storage.deleteProject(activeId)
     const remaining = projects.filter((p) => p.id !== activeId)
     setProjects(remaining)
+    setActiveId(null)
+    setEntries([])
     if (remaining.length) {
-      await switchProject(remaining[0].id)
+      await goToOverview()
     } else {
-      setActiveId(null)
-      setEntries([])
+      setShowOverview(false) // nothing to show an overview of — EmptyState instead
     }
   }
 
@@ -360,16 +383,22 @@ export default function App({ session, onSignOut }) {
 
       <Header
         activeProject={activeProject}
-        projects={projects}
-        activeId={activeId}
-        onSwitchProject={switchProject}
+        showOverview={showOverview}
+        onGoHome={goToOverview}
         onOpenProjectSettings={() => setShowProjectSettings(true)}
         onOpenAccount={() => setShowAccount(true)}
         onSignOut={onSignOut}
       />
 
-      {!activeProject ? (
+      {projects.length === 0 ? (
         <EmptyState onNewProject={() => setShowNewProject(true)} />
+      ) : showOverview ? (
+        <ProjectsOverview
+          projects={projects}
+          summaries={summaries}
+          onSelectProject={switchProject}
+          onNewProject={() => setShowNewProject(true)}
+        />
       ) : (
         <div className="p-4 pb-24">
           <DashboardSummary
@@ -401,7 +430,7 @@ export default function App({ session, onSignOut }) {
         </div>
       )}
 
-      {activeProject && canEdit && (
+      {!showOverview && activeProject && canEdit && (
         <button
           onClick={openQuickAdd}
           className="fixed bottom-5 right-5 bg-orange-700 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center"
