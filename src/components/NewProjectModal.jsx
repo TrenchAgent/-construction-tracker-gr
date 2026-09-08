@@ -28,7 +28,7 @@ export default function NewProjectModal({ onClose, onCreate }) {
       <div className="bg-white w-full max-w-md rounded-t-2xl p-5">
         <div className="flex items-center mb-4">
           <h3 className="font-semibold">Νέο έργο</h3>
-          <button onClick={onClose} className="ml-auto text-stone-400 p-1 -m-1">
+          <button onClick={onClose} className="ml-auto text-stone-500 p-2.5 -m-2.5">
             <X size={18} />
           </button>
         </div>

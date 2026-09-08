@@ -485,7 +485,7 @@ export default function App({ session, onSignOut }) {
       {error && (
         <div className="bg-rose-50 text-rose-700 text-xs px-4 py-2 flex items-center gap-2 border-b border-rose-200">
           <span className="flex-1">{error}</span>
-          <button onClick={() => setError('')} className="text-rose-400 shrink-0">
+          <button onClick={() => setError('')} className="text-rose-400 shrink-0 p-2 -m-2">
             <X size={14} />
           </button>
         </div>

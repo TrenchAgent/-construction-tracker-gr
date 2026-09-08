@@ -46,10 +46,11 @@ export default function ProjectsOverview({ projects, summaries, onSelectProject,
               )}
               <div className="flex items-center gap-3 flex-wrap">
                 <div>
-                  <div className="text-[11px] text-stone-400">Κέρδος / Ζημία</div>
+                  <div className="text-[11px] text-stone-500">Κέρδος / Ζημία</div>
                   <div
                     className={
-                      'text-sm font-semibold ' + (profit >= 0 ? 'text-emerald-700' : 'text-rose-700')
+                      'text-base font-bold tabular-nums ' +
+                      (profit >= 0 ? 'text-emerald-800' : 'text-rose-800')
                     }
                   >
                     {formatEUR(profit)}
@@ -57,8 +58,8 @@ export default function ProjectsOverview({ projects, summaries, onSelectProject,
                 </div>
                 {summary.pendingAmount > 0 && (
                   <div>
-                    <div className="text-[11px] text-stone-400">Εκκρεμή</div>
-                    <div className="text-sm font-semibold text-amber-800">
+                    <div className="text-[11px] text-stone-500">Εκκρεμή</div>
+                    <div className="text-base font-bold tabular-nums text-amber-900">
                       {formatEUR(summary.pendingAmount)}
                     </div>
                   </div>

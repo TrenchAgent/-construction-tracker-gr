@@ -65,7 +65,7 @@ export default function ReceiptThumbnail({ path, size = 44 }) {
         >
           <button
             onClick={() => setExpanded(false)}
-            className="absolute top-4 right-4 text-white/80 p-2"
+            className="absolute top-4 right-4 text-white/80 p-2.5"
             aria-label="Κλείσιμο"
           >
             <X size={22} />

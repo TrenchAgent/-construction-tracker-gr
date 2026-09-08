@@ -92,7 +92,7 @@ export default function EntryFilterBar({ filters, onChange }) {
           {active && (
             <button
               onClick={() => onChange(EMPTY_FILTERS)}
-              className="w-full flex items-center justify-center gap-1 text-xs text-stone-500 py-1"
+              className="w-full flex items-center justify-center gap-1 text-xs text-stone-500 py-2"
             >
               <X size={12} />
               Καθαρισμός φίλτρων

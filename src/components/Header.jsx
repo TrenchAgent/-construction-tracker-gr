@@ -13,9 +13,12 @@ export default function Header({
   return (
     <div className="sticky top-0 bg-stone-50 border-b border-stone-200 px-4 py-3 flex items-center gap-1.5 z-10">
       {inProject ? (
+        // Bigger tap target than the icon itself (see the same pattern
+        // below) — these are hit often, one-handed, sometimes gloved, not
+        // just technically clickable.
         <button
           onClick={onGoHome}
-          className="text-orange-700 shrink-0 p-1.5 -ml-1.5 rounded-lg hover:bg-stone-200/60"
+          className="text-orange-700 shrink-0 p-2.5 -ml-2.5 rounded-lg active:bg-stone-200"
           aria-label="Όλα τα έργα"
         >
           <HardHat className="w-5 h-5" strokeWidth={2.25} />
@@ -45,7 +48,7 @@ export default function Header({
       {inProject && (
         <button
           onClick={onOpenProjectSettings}
-          className="text-stone-400 hover:text-stone-600 hover:bg-stone-200/60 shrink-0 p-1.5 rounded-lg"
+          className="text-stone-500 active:bg-stone-200 shrink-0 p-2.5 rounded-lg"
           aria-label="Ρυθμίσεις έργου"
         >
           <Settings className="w-4 h-4" />
@@ -53,14 +56,14 @@ export default function Header({
       )}
       <button
         onClick={onOpenAccount}
-        className="text-stone-400 hover:text-stone-600 hover:bg-stone-200/60 shrink-0 p-1.5 rounded-lg"
+        className="text-stone-500 active:bg-stone-200 shrink-0 p-2.5 rounded-lg"
         aria-label="Λογαριασμός"
       >
         <User className="w-4 h-4" />
       </button>
       <button
         onClick={onSignOut}
-        className="text-stone-400 hover:text-stone-600 shrink-0 flex items-center gap-1 text-xs p-1.5"
+        className="text-stone-500 active:bg-stone-200 shrink-0 flex items-center gap-1 text-xs py-2.5 px-2 rounded-lg"
       >
         <LogOut className="w-3.5 h-3.5" />
         Έξοδος

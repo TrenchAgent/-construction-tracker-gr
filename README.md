@@ -87,6 +87,28 @@ RLS-based access control entries already have (`security_invoker`, see
 the comment above it in schema.sql), so it needs no policy of its own and
 can't leak totals from a project you're not on.
 
+## Outdoor readability
+
+Amounts and category/status badges use darker text than Tailwind's
+usual defaults on purpose (900-level instead of 700/800 in most places)
+— these are the numbers someone reads on a phone screen outdoors, often
+in direct sunlight, where ordinary on-screen contrast washes out badly.
+Verified with the actual WCAG contrast formula against the exact
+background each one sits on, not eyeballed — every pair here clears 7:1
+(WCAG AAA), well past the usual 4.5:1 minimum. Amount text is also bold
+instead of semi-bold, and a size step up where there was room for it.
+
+Tap targets on the icon buttons used constantly during real work (the
+crane icon → overview, project settings, account, the entry list's
+Αντιγραφή/Διαγραφή, every modal's close button) are bigger than the icon
+itself, not just the icon's own bounding box — sized for a thumb, not a
+mouse pointer, and workable with a glove on. A few (the header's
+settings/account icons specifically) land in the high-30s of pixels
+rather than the ideal 44 — the header has to fit a project name plus
+several icons on one line, and further padding there would come at the
+truncated name's expense; still a real improvement over what was there
+before, just not maxed out everywhere for its own sake.
+
 ## Faster repeat entry
 
 Opening **+ Νέα καταχώρηση** for a brand new entry pre-fills the category

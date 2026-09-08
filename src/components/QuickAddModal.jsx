@@ -185,7 +185,7 @@ export default function QuickAddModal({
                 ? 'Νέα καταχώρηση (αντίγραφο)'
                 : 'Νέα καταχώρηση'}
           </h3>
-          <button onClick={onClose} className="ml-auto text-stone-400 p-1 -m-1">
+          <button onClick={onClose} className="ml-auto text-stone-500 p-2.5 -m-2.5">
             <X size={18} />
           </button>
         </div>

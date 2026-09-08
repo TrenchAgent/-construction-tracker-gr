@@ -181,7 +181,7 @@ export default function ProjectSettingsModal({
       >
         <div className="flex items-center mb-4">
           <h3 className="font-semibold">{isOwner ? 'Ρυθμίσεις έργου' : 'Πληροφορίες έργου'}</h3>
-          <button onClick={onClose} className="ml-auto text-stone-400 p-1 -m-1">
+          <button onClick={onClose} className="ml-auto text-stone-500 p-2.5 -m-2.5">
             <X size={18} />
           </button>
         </div>

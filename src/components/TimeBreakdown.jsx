@@ -37,8 +37,8 @@ function Row({ label, entries }) {
     <div className="flex items-center justify-between py-2 text-sm">
       <span className="text-stone-500">{label}</span>
       <span className="flex gap-3 tabular-nums">
-        <span className="text-emerald-700 font-medium">+{formatEUR(income)}</span>
-        <span className="text-rose-700 font-medium">-{formatEUR(expense)}</span>
+        <span className="text-emerald-800 font-bold">+{formatEUR(income)}</span>
+        <span className="text-rose-800 font-bold">-{formatEUR(expense)}</span>
       </span>
     </div>
   )

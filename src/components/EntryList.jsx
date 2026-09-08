@@ -40,7 +40,7 @@ export default function EntryList({ entries, filtersActive, canEdit, onEdit, onD
                   {e.category}
                 </span>
               ) : (
-                <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-800">
+                <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-900">
                   Είσπραξη
                 </span>
               )}
@@ -98,22 +98,25 @@ export default function EntryList({ entries, filtersActive, canEdit, onEdit, onD
               <div className="flex-1 min-w-0">{details}</div>
             )}
             <div className="text-right shrink-0">
+              {/* Darker + bolder than a typical amount display on purpose
+                  — the single most important number on this row, and the
+                  one most often read outdoors in direct sunlight. */}
               <div
                 className={
-                  'font-semibold text-sm ' +
-                  (e.kind === 'income' ? 'text-emerald-700' : 'text-rose-700')
+                  'font-bold text-base tabular-nums ' +
+                  (e.kind === 'income' ? 'text-emerald-800' : 'text-rose-800')
                 }
               >
                 {e.kind === 'income' ? '+' : '-'}
                 {formatEUR(e.amount)}
               </div>
               {canEdit && (
-                <div className="flex items-center gap-2 justify-end mt-1">
+                <div className="flex items-center gap-1 justify-end mt-1 -mr-1.5">
                   <button
                     onClick={() => onDuplicate(e)}
-                    className="text-stone-300 hover:text-orange-700 text-xs inline-flex items-center gap-0.5"
+                    className="text-stone-500 hover:text-orange-700 active:bg-stone-100 text-xs inline-flex items-center gap-1 py-2.5 px-1.5 rounded-lg"
                   >
-                    <Copy size={11} />
+                    <Copy size={13} />
                     Αντιγραφή
                   </button>
                   <button
@@ -124,9 +127,9 @@ export default function EntryList({ entries, filtersActive, canEdit, onEdit, onD
                       )
                       if (confirmed) onDelete(e.id)
                     }}
-                    className="text-stone-300 hover:text-rose-600 text-xs inline-flex items-center gap-0.5"
+                    className="text-stone-500 hover:text-rose-600 active:bg-stone-100 text-xs inline-flex items-center gap-1 py-2.5 px-1.5 rounded-lg"
                   >
-                    <Trash2 size={11} />
+                    <Trash2 size={13} />
                     Διαγραφή
                   </button>
                 </div>

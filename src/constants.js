@@ -3,10 +3,16 @@
 // list was cut for v1.
 export const EXPENSE_CATEGORIES = ['Υλικά', 'Εργατικά', 'Λοιπά']
 
+// Darker than the usual Tailwind default (800→900, 700→800) on purpose —
+// these are read outdoors, often in direct sunlight, where ordinary
+// screen-contrast minimums (WCAG AA, 4.5:1) wash out badly. Verified
+// against the actual background each sits on, not eyeballed: every pair
+// here clears 7:1 (WCAG AAA) — see the contrast check in the commit this
+// came from for the exact numbers.
 export const CATEGORY_BADGE_STYLES = {
-  Υλικά: 'bg-amber-100 text-amber-800',
-  Εργατικά: 'bg-blue-100 text-blue-800',
-  Λοιπά: 'bg-stone-200 text-stone-700',
+  Υλικά: 'bg-amber-100 text-amber-900',
+  Εργατικά: 'bg-blue-100 text-blue-900',
+  Λοιπά: 'bg-stone-200 text-stone-800',
 }
 
 export const VAT_RATE = 0.24
@@ -19,10 +25,11 @@ export const PAYMENT_STATUS_LABELS = {
   paid: 'Εξοφλήθηκε',
 }
 
+// Same outdoor-contrast reasoning as CATEGORY_BADGE_STYLES above.
 export const PAYMENT_STATUS_BADGE_STYLES = {
-  pending: 'bg-rose-100 text-rose-700',
-  partial: 'bg-amber-100 text-amber-800',
-  paid: 'bg-emerald-100 text-emerald-800',
+  pending: 'bg-rose-100 text-rose-900',
+  partial: 'bg-amber-100 text-amber-900',
+  paid: 'bg-emerald-100 text-emerald-900',
 }
 
 // Optional — not every entry needs a recorded payment method, so unlike
