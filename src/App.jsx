@@ -6,6 +6,8 @@ import ProjectsOverview from './components/ProjectsOverview'
 import DashboardSummary from './components/DashboardSummary'
 import TimeBreakdown from './components/TimeBreakdown'
 import EntryList from './components/EntryList'
+import EntryFilterBar from './components/EntryFilterBar'
+import { EMPTY_FILTERS, applyEntryFilters, isFilterActive } from './lib/entryFilters'
 import NewProjectModal from './components/NewProjectModal'
 import QuickAddModal from './components/QuickAddModal'
 import ProjectSettingsModal from './components/ProjectSettingsModal'
@@ -63,6 +65,7 @@ export default function App({ session, onSignOut }) {
   // knows whether there's actually anything to show an overview OF.
   const [showOverview, setShowOverview] = useState(true)
   const [summaries, setSummaries] = useState(new Map())
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
 
   // flushOutbox (below) is called from the 'online' event listener, which
   // can fire long after the render that registered it — a plain closure
@@ -180,6 +183,7 @@ export default function App({ session, onSignOut }) {
   async function switchProject(id) {
     setActiveId(id)
     setShowOverview(false)
+    setFilters(EMPTY_FILTERS) // a filter set on one project isn't likely to mean anything on another
     try {
       const fresh = await storage.getEntries(id)
       setEntries(mergeQueuedIntoEntries(id, fresh))
@@ -350,6 +354,10 @@ export default function App({ session, onSignOut }) {
     .reduce((s, e) => s + e.amount, 0)
   const activeProject = projects.find((p) => p.id === activeId)
   const canEdit = activeProject && activeProject.role !== 'viewer'
+  // Filtering only narrows what's shown in the list below — the totals
+  // above (income/expense/profit/pending, time breakdown) always reflect
+  // the whole project, not just whatever's currently filtered into view.
+  const filteredEntries = applyEntryFilters(entries, filters)
 
   if (loading) {
     return (
@@ -421,8 +429,11 @@ export default function App({ session, onSignOut }) {
             </button>
           </div>
 
+          {entries.length > 0 && <EntryFilterBar filters={filters} onChange={setFilters} />}
+
           <EntryList
-            entries={entries}
+            entries={filteredEntries}
+            filtersActive={isFilterActive(filters)}
             canEdit={canEdit}
             onEdit={openEditEntry}
             onDelete={deleteEntry}

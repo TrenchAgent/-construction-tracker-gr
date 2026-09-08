@@ -8,11 +8,13 @@ import {
 import { formatEUR } from '../lib/format'
 import ReceiptThumbnail from './ReceiptThumbnail'
 
-export default function EntryList({ entries, canEdit, onEdit, onDelete }) {
+export default function EntryList({ entries, filtersActive, canEdit, onEdit, onDelete }) {
   if (entries.length === 0) {
     return (
       <div className="text-sm text-stone-400 text-center py-10">
-        Δεν υπάρχουν καταχωρήσεις ακόμα.
+        {filtersActive
+          ? 'Καμία καταχώρηση δεν ταιριάζει με τα φίλτρα.'
+          : 'Δεν υπάρχουν καταχωρήσεις ακόμα.'}
       </div>
     )
   }

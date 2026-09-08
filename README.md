@@ -87,6 +87,17 @@ RLS-based access control entries already have (`security_invoker`, see
 the comment above it in schema.sql), so it needs no policy of its own and
 can't leak totals from a project you're not on.
 
+## Filtering the entry list
+
+A project's entry list has a search box (matches note or vendor) plus a
+filter panel (tap the icon next to search) for category, payment status,
+and a date range — all client-side over whatever's already loaded for
+that project, no extra database query. Filters reset when you switch
+projects. The dashboard totals above the list (income/expense/profit,
+outstanding, time breakdown) always reflect the whole project, not just
+what's currently filtered into view — filtering narrows the list you're
+looking at, it doesn't recompute what the project actually adds up to.
+
 ## Payment tracking and time breakdown
 
 Every entry has a payment status — **Εκκρεμεί** (pending), **Μερική
@@ -278,6 +289,10 @@ src/
   lib/outbox.js                 the offline queue for "add entry" writes
                                  made with no connection (see Offline
                                  support above)
+  lib/entryFilters.js            pure filtering logic for the entry list
+                                  (see EntryFilterBar.jsx above), kept
+                                  separate so that component stays a
+                                  component (Fast Refresh needs that)
   components/
     AuthGate.jsx                shows LoginScreen or the app, based on
                                  whether there's a signed-in session
@@ -292,6 +307,8 @@ src/
     DashboardSummary.jsx          income/expense/profit/outstanding cards
     TimeBreakdown.jsx              Σήμερα / Αυτή την εβδομάδα / Αυτόν τον
                                     μήνα income+expense breakdown
+    EntryFilterBar.jsx              search + category/status/date-range
+                                     filter panel above the entry list
     EntryList.jsx                  the entry list — tap a row to edit,
                                     "Διαγραφή" to delete (hidden entirely
                                     for viewer-role collaborators)
