@@ -178,7 +178,7 @@ export default function QuickAddModal({
         style={{ maxHeight: '85vh', overflowY: 'auto' }}
       >
         <div className="flex items-center mb-4">
-          <h3 className="font-semibold">
+          <h3 className="font-display font-bold text-lg">
             {isEditing
               ? 'Επεξεργασία καταχώρησης'
               : duplicateFrom

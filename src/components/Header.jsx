@@ -29,7 +29,7 @@ export default function Header({
       <div className="flex-1 min-w-0 ml-1">
         {inProject ? (
           <>
-            <div className="font-semibold truncate flex items-center gap-1.5">
+            <div className="font-display font-bold text-lg truncate flex items-center gap-1.5">
               <span className="truncate">{activeProject.name}</span>
               {activeProject.role && activeProject.role !== 'owner' && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-medium shrink-0">
@@ -48,7 +48,7 @@ export default function Header({
             )}
           </>
         ) : (
-          <div className="font-semibold">Διαχείριση Έργου</div>
+          <div className="font-display font-bold text-lg">Διαχείριση Έργου</div>
         )}
       </div>
       {inProject && (

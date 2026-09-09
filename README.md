@@ -448,6 +448,44 @@ effect. If you'd rather the marketing page be the front door at `/` with
 the app moved to e.g. `/app`, that's a reasonable next step, just a
 deliberate one — ask for it explicitly.
 
+## Typography
+
+Headings and every monetary amount use **Fira Sans Condensed** (700/800
+weight) — condensed and heavy on purpose, so a number reads as the
+headline it is, not body text that happens to be a number. Everything
+else (labels, buttons, form fields, entry notes) uses **Inter**
+(400/500/600). Both are self-hosted via `@fontsource`, not a Google
+Fonts CDN `<link>` — this is a PWA that has to keep working with no
+signal on a jobsite, so fonts are bundled and precached exactly like
+the app's own JS/CSS (see `vite.config.js`'s `workbox.globPatterns`,
+which now includes `woff2`), not fetched from an external host at
+request time.
+
+Both were chosen only after actually checking their font files for
+real Greek glyph coverage — most condensed/display Google Fonts don't
+have one at all. Checked roughly 15 candidates (Oswald, Barlow
+Condensed, Archivo Narrow, Saira Condensed, Roboto Condensed, and
+others) by inspecting each package's shipped `@font-face` subsets
+directly, not by assuming a popular font "probably" supports Greek:
+most had none. Fira Sans Condensed and Inter both genuinely do (real
+`greek`/`greek-ext` subset files, confirmed at the byte level, not just
+listed in metadata). Only those two subsets plus `latin`/`latin-ext`
+are imported — not fontsource's combined "every script" CSS file, which
+would have doubled the offline precache with cyrillic/vietnamese font
+files this Greek/English app will never render (caught by checking the
+actual built precache size before and after, not assumed fine).
+
+Verified with the actual browser, not just eyeballing a screenshot:
+`document.fonts.check()` confirms the real fonts (not a silent
+system-font fallback) are loaded and match Greek text at the exact
+weights used, and a close-up render of every accented Greek vowel (ά έ
+ή ί ό ύ ώ) plus final sigma (ς), uppercase included, in both faces at
+their real in-app sizes, confirms they render correctly and look
+good — not just technically present. This is a purely visual change:
+no color value anywhere was touched, only font-family/weight/size — so
+the outdoor-readability contrast ratios from that earlier pass are
+provably unaffected, not just assumed fine.
+
 ## Project structure
 
 ```

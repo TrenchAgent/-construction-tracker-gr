@@ -17,7 +17,7 @@ export default function ArchivedProjects({ projects, onBack, onSelectProject, on
         <ChevronLeft size={14} />
         Πίσω στα έργα μου
       </button>
-      <h2 className="text-sm font-semibold text-stone-700 mb-3">Αρχειοθετημένα έργα</h2>
+      <h2 className="font-display font-bold text-lg text-stone-800 mb-3">Αρχειοθετημένα έργα</h2>
 
       {sorted.length === 0 ? (
         <div className="text-sm text-stone-400 text-center py-10">Δεν υπάρχουν αρχειοθετημένα έργα.</div>
@@ -26,7 +26,7 @@ export default function ArchivedProjects({ projects, onBack, onSelectProject, on
           {sorted.map((p) => (
             <div key={p.id} className="bg-white border border-stone-200 rounded-xl p-4">
               <button onClick={() => onSelectProject(p.id)} className="w-full text-left">
-                <div className="font-semibold truncate mb-0.5">{p.name}</div>
+                <div className="font-display font-bold text-lg truncate mb-0.5">{p.name}</div>
                 {p.location && (
                   <div className="text-xs text-stone-500 flex items-center gap-1">
                     <MapPin size={12} />

@@ -18,7 +18,7 @@ export default function ProjectsOverview({
   return (
     <div className="p-4 pb-24">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-stone-700">Τα έργα μου</h2>
+        <h2 className="font-display font-bold text-lg text-stone-800">Τα έργα μου</h2>
         <button
           onClick={onNewProject}
           className="text-xs text-orange-700 font-medium flex items-center gap-0.5"
@@ -48,7 +48,7 @@ export default function ProjectsOverview({
               className="w-full text-left bg-white border border-stone-200 rounded-xl p-4 active:bg-stone-50"
             >
               <div className="flex items-center gap-1.5 mb-0.5">
-                <span className="font-semibold truncate">{p.name}</span>
+                <span className="font-display font-bold text-lg truncate">{p.name}</span>
                 {p.role !== 'owner' && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-medium shrink-0 inline-flex items-center gap-0.5">
                     <Users size={10} />
@@ -67,7 +67,7 @@ export default function ProjectsOverview({
                   <div className="text-[11px] text-stone-500">Κέρδος / Ζημία</div>
                   <div
                     className={
-                      'text-base font-bold tabular-nums ' +
+                      'font-display font-bold text-lg tabular-nums ' +
                       (profit >= 0 ? 'text-emerald-800' : 'text-rose-800')
                     }
                   >
@@ -77,7 +77,7 @@ export default function ProjectsOverview({
                 {summary.pendingAmount > 0 && (
                   <div>
                     <div className="text-[11px] text-stone-500">Εκκρεμή</div>
-                    <div className="text-base font-bold tabular-nums text-amber-900">
+                    <div className="font-display font-bold text-lg tabular-nums text-amber-900">
                       {formatEUR(summary.pendingAmount)}
                     </div>
                   </div>

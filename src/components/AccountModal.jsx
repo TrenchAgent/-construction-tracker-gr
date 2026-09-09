@@ -61,7 +61,7 @@ export default function AccountModal({ email, justCheckedOut, onClose }) {
     <div className="fixed inset-0 bg-black/40 flex items-end justify-center z-20">
       <div className="bg-white w-full max-w-md rounded-t-2xl p-5">
         <div className="flex items-center mb-4">
-          <h3 className="font-semibold">Λογαριασμός</h3>
+          <h3 className="font-display font-bold text-lg">Λογαριασμός</h3>
           <button onClick={onClose} className="ml-auto text-stone-500 p-2.5 -m-2.5">
             <X size={18} />
           </button>
@@ -129,7 +129,7 @@ function StatusCard({ subscription, busy, error, onUpgrade }) {
         <div className="text-sm text-rose-600 mb-2">Η συνδρομή σας έχει ακυρωθεί.</div>
       )}
       <div className="font-semibold mb-1">Απλή μηνιαία συνδρομή</div>
-      <div className="text-2xl font-semibold mb-1">{PRICE_LABEL}</div>
+      <div className="font-display font-extrabold text-3xl mb-1">{PRICE_LABEL}</div>
       <div className="text-sm text-stone-500 mb-4">{TRIAL_DAYS} ημέρες δωρεάν δοκιμή, χωρίς χρέωση μέχρι τότε.</div>
       {error && <div className="text-xs text-rose-600 mb-2">{error}</div>}
       <button

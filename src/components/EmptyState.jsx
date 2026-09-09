@@ -10,7 +10,7 @@ export default function EmptyState({ isFirstRun, onNewProject }) {
   return (
     <div className="p-8 text-center mt-16">
       <HardHat size={40} strokeWidth={1.75} className="mx-auto text-orange-700 mb-3" />
-      <h2 className="font-semibold text-lg mb-1">
+      <h2 className="font-display font-bold text-xl mb-1">
         {isFirstRun ? 'Καλώς ήρθατε στη Διαχείριση Έργου' : 'Ξεκινήστε ένα νέο έργο'}
       </h2>
       {isFirstRun ? (

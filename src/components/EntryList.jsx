@@ -103,7 +103,7 @@ export default function EntryList({ entries, filtersActive, canEdit, onEdit, onD
                   one most often read outdoors in direct sunlight. */}
               <div
                 className={
-                  'font-bold text-base tabular-nums ' +
+                  'font-display font-bold text-lg tabular-nums ' +
                   (e.kind === 'income' ? 'text-emerald-800' : 'text-rose-800')
                 }
               >

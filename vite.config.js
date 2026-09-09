@@ -43,7 +43,10 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        // woff2 added for the self-hosted fonts (see index.css) — without
+        // this they'd load fine online but not be available offline like
+        // everything else the app needs on a jobsite with no signal.
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
       },
     }),
   ],

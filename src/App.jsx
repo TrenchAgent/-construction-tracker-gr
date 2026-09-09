@@ -578,10 +578,7 @@ export default function App({ session, onSignOut }) {
   }
 
   return (
-    <div
-      className="max-w-md mx-auto bg-stone-50 min-h-screen text-stone-900"
-      style={{ fontFamily: 'system-ui, sans-serif' }}
-    >
+    <div className="max-w-md mx-auto bg-stone-50 min-h-screen text-stone-900 font-sans">
       {error && (
         <div className="bg-rose-50 text-rose-700 text-xs px-4 py-2 flex items-center gap-2 border-b border-rose-200">
           <span className="flex-1">{error}</span>
@@ -643,7 +640,7 @@ export default function App({ session, onSignOut }) {
           <MonthlyTrendChart entries={visibleEntries} projectCreatedAt={activeProject?.createdAt} />
 
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-stone-700">Καταχωρήσεις</h3>
+            <h3 className="font-display font-bold text-lg text-stone-800">Καταχωρήσεις</h3>
             <button
               onClick={() => setShowNewProject(true)}
               className="text-xs text-orange-700 font-medium flex items-center gap-0.5"

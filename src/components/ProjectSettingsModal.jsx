@@ -197,7 +197,7 @@ export default function ProjectSettingsModal({
         style={{ maxHeight: '85vh', overflowY: 'auto' }}
       >
         <div className="flex items-center mb-4">
-          <h3 className="font-semibold flex items-center gap-1.5">
+          <h3 className="font-display font-bold text-lg flex items-center gap-1.5">
             {isOwner ? 'Ρυθμίσεις έργου' : 'Πληροφορίες έργου'}
             {isArchived && (
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-stone-200 text-stone-600 font-medium inline-flex items-center gap-0.5">
