@@ -1,4 +1,4 @@
-import { HardHat, Settings, User, LogOut } from 'lucide-react'
+import { Archive, HardHat, Settings, User, LogOut } from 'lucide-react'
 
 export default function Header({
   activeProject,
@@ -34,6 +34,12 @@ export default function Header({
               {activeProject.role && activeProject.role !== 'owner' && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-medium shrink-0">
                   Συνεργασία
+                </span>
+              )}
+              {activeProject.archivedAt && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-stone-200 text-stone-600 font-medium shrink-0 inline-flex items-center gap-0.5">
+                  <Archive size={9} />
+                  Αρχειοθετημένο
                 </span>
               )}
             </div>

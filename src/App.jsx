@@ -3,6 +3,7 @@ import { X, WifiOff, Plus } from 'lucide-react'
 import Header from './components/Header'
 import EmptyState from './components/EmptyState'
 import ProjectsOverview from './components/ProjectsOverview'
+import ArchivedProjects from './components/ArchivedProjects'
 import DashboardSummary from './components/DashboardSummary'
 import TimeBreakdown from './components/TimeBreakdown'
 import EntryList from './components/EntryList'
@@ -73,6 +74,12 @@ export default function App({ session, onSignOut }) {
   // Starts true; the initial-load effect below only flips it once it
   // knows whether there's actually anything to show an overview OF.
   const [showOverview, setShowOverview] = useState(true)
+  // A separate flag, not a third value of showOverview — archived
+  // projects are reachable only from the overview screen (see the link
+  // in ProjectsOverview), so the two never need to be true at once, but
+  // keeping them independent avoids conflating "which top-level screen"
+  // with "which list within it."
+  const [showArchived, setShowArchived] = useState(false)
   const [summaries, setSummaries] = useState(new Map())
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   // { kind: 'entry' | 'project', id, label, timeoutId } | null — see
@@ -212,6 +219,7 @@ export default function App({ session, onSignOut }) {
   async function switchProject(id) {
     setActiveId(id)
     setShowOverview(false)
+    setShowArchived(false)
     setFilters(EMPTY_FILTERS) // a filter set on one project isn't likely to mean anything on another
     try {
       const fresh = await storage.getEntries(id)
@@ -230,6 +238,7 @@ export default function App({ session, onSignOut }) {
   // on its card, not stale until the next full reload.
   async function goToOverview() {
     setShowOverview(true)
+    setShowArchived(false)
     try {
       setSummaries(await storage.getProjectSummaries())
     } catch (err) {
@@ -414,6 +423,30 @@ export default function App({ session, onSignOut }) {
     }
   }
 
+  // Throws on failure — ProjectSettingsModal displays it. Unlike
+  // delete/restore this is a plain, immediate update: archiving is fully
+  // reversible from the Archived section at any time, so there's nothing
+  // here that needs an undo window.
+  async function toggleActiveProjectArchived() {
+    const wasArchived = Boolean(activeProject?.archivedAt)
+    const saved = await storage.setProjectArchived(activeId, !wasArchived)
+    setProjects((list) => list.map((p) => (p.id === saved.id ? { ...saved, role: p.role } : p)))
+    if (!wasArchived) {
+      // It just left the active list — go back to where the user would
+      // expect to find their projects rather than leaving them looking
+      // at one that's no longer there.
+      goToOverview()
+    }
+  }
+
+  // Called from the Archived section (see ArchivedProjects) — stays on
+  // that screen; the restored project simply drops out of the archived
+  // list it's rendered from.
+  async function restoreProject(id) {
+    const saved = await storage.setProjectArchived(id, false)
+    setProjects((list) => list.map((p) => (p.id === saved.id ? { ...saved, role: p.role } : p)))
+  }
+
   function exportCsv() {
     const csv = entriesToCsv(visibleEntries)
     const today = new Date().toISOString().slice(0, 10)
@@ -443,6 +476,10 @@ export default function App({ session, onSignOut }) {
   const visibleProjects = pendingDeleteProjectId
     ? projects.filter((p) => p.id !== pendingDeleteProjectId)
     : projects
+  // Active vs. archived is purely a client-side split of the same list —
+  // see storage.getProjects' own comment for why that's one query, not two.
+  const activeProjects = visibleProjects.filter((p) => !p.archivedAt)
+  const archivedProjects = visibleProjects.filter((p) => p.archivedAt)
   // Whatever category/vendor was used on the most recently added expense
   // in this project — QuickAddModal starts a brand new entry there
   // instead of always resetting to "Υλικά" / blank, since logging a run
@@ -510,12 +547,21 @@ export default function App({ session, onSignOut }) {
 
       {projects.length === 0 ? (
         <EmptyState onNewProject={() => setShowNewProject(true)} />
+      ) : showArchived ? (
+        <ArchivedProjects
+          projects={archivedProjects}
+          onBack={() => setShowArchived(false)}
+          onSelectProject={switchProject}
+          onRestore={restoreProject}
+        />
       ) : showOverview ? (
         <ProjectsOverview
-          projects={visibleProjects}
+          projects={activeProjects}
           summaries={summaries}
           onSelectProject={switchProject}
           onNewProject={() => setShowNewProject(true)}
+          archivedCount={archivedProjects.length}
+          onShowArchived={() => setShowArchived(true)}
         />
       ) : (
         <div className="p-4 pb-24">
@@ -586,6 +632,7 @@ export default function App({ session, onSignOut }) {
           onClose={() => setShowProjectSettings(false)}
           onSave={updateProject}
           onDelete={removeProject}
+          onArchiveToggle={toggleActiveProjectArchived}
           onExport={exportCsv}
           onLoadCollaborators={loadCollaborators}
           onInviteCollaborator={inviteCollaborator}

@@ -19,6 +19,20 @@ create table if not exists projects (
   created_at timestamptz not null default now()
 );
 
+-- Archiving a project (added after projects already existed in
+-- production, so this is an ALTER) hides it from the active list and the
+-- all-projects overview without deleting anything — null means active,
+-- a timestamp means archived (and when). Deliberately not a boolean:
+-- keeping *when* it was archived costs nothing extra and is useful data
+-- on its own (sorting the archived list, "archived 3 months ago"), the
+-- same reasoning as created_at itself. No RLS changes needed for this —
+-- every existing policy on projects/entries/collaborators is keyed on
+-- ownership or collaborator role, never on archived_at, so an archived
+-- project stays exactly as visible to its owner and collaborators as it
+-- was before (verified, not just reasoned about — see the commit this
+-- came from).
+alter table projects add column if not exists archived_at timestamptz;
+
 create table if not exists entries (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,

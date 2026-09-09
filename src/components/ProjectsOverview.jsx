@@ -1,11 +1,20 @@
-import { MapPin, Plus, Users } from 'lucide-react'
+import { Archive, MapPin, Plus, Users } from 'lucide-react'
 import { formatEUR } from '../lib/format'
 
 // One card per project — name, location, profit/loss, and outstanding
 // amount, so the user can tell what needs attention before drilling into
 // any one project. summaries is keyed by project id; a project with no
 // entries yet just isn't in it (see storage.getProjectSummaries).
-export default function ProjectsOverview({ projects, summaries, onSelectProject, onNewProject }) {
+// `projects` here is already the active (non-archived) list — archivedCount
+// only drives whether the link to the separate archived section shows up.
+export default function ProjectsOverview({
+  projects,
+  summaries,
+  onSelectProject,
+  onNewProject,
+  archivedCount,
+  onShowArchived,
+}) {
   return (
     <div className="p-4 pb-24">
       <div className="flex items-center justify-between mb-3">
@@ -18,6 +27,15 @@ export default function ProjectsOverview({ projects, summaries, onSelectProject,
           Νέο έργο
         </button>
       </div>
+
+      {/* All this user's projects are archived (not the same as never
+          having created one — see EmptyState/App.jsx for that case) —
+          say so plainly rather than showing a silently empty list. */}
+      {projects.length === 0 && archivedCount > 0 && (
+        <div className="text-sm text-stone-400 text-center py-6">
+          Όλα τα έργα σας είναι αρχειοθετημένα.
+        </div>
+      )}
 
       <div className="space-y-2">
         {projects.map((p) => {
@@ -69,6 +87,16 @@ export default function ProjectsOverview({ projects, summaries, onSelectProject,
           )
         })}
       </div>
+
+      {archivedCount > 0 && (
+        <button
+          onClick={onShowArchived}
+          className="w-full flex items-center justify-center gap-1.5 text-xs text-stone-500 py-3 mt-2"
+        >
+          <Archive size={13} />
+          Αρχειοθετημένα έργα ({archivedCount})
+        </button>
+      )}
     </div>
   )
 }

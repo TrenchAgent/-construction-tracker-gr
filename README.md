@@ -87,6 +87,36 @@ RLS-based access control entries already have (`security_invoker`, see
 the comment above it in schema.sql), so it needs no policy of its own and
 can't leak totals from a project you're not on.
 
+## Archiving a project
+
+A finished project shouldn't have to be deleted just to get it out of the
+way, and shouldn't clutter the overview forever either — "Αρχειοθέτηση
+έργου" in a project's settings (owner only) moves it out of the active
+list and the all-projects overview, into a separate "Αρχειοθετημένα
+έργα" section linked from the bottom of the overview (only shown when
+there's at least one). Nothing about the project changes except where it
+shows up: entries, totals, collaborator access, editing — all exactly as
+they were. Restoring it (from the archived list, or from that same
+project's own settings once you're viewing it) is the same one-field
+update in reverse, and needs no confirmation dialog either way — unlike
+delete, this doesn't touch any data, so there's nothing an undo window
+would need to protect.
+
+Schema-wise this is one nullable `archived_at` column on `projects` (null
+= active). Deliberately not a second RLS policy or a new table: every
+existing policy on projects/entries/collaborators is keyed on ownership
+or collaborator role, never on archive state, so an archived project
+stays exactly as visible — and exactly as editable — to its owner and
+collaborators as it always was. That's not just reasoned about: verified
+by loading the real, unmodified `schema.sql` into a disposable local
+Postgres database (no production credentials in this session) with a
+stand-in for Supabase's `auth.uid()`/`auth.email()`, and running the
+actual policies as the `authenticated` role — an owner archiving a
+project, an editor-collaborator still reading and writing its entries
+after that, a viewer-collaborator still seeing it but correctly denied
+edit, an unrelated third user still seeing nothing at all, and the
+project's data surviving an archive→restore round trip intact.
+
 ## Outdoor readability
 
 Amounts and category/status badges use darker text than Tailwind's
@@ -366,7 +396,10 @@ src/
                                    at all — different from the overview
                                    below, which needs at least one)
     ProjectsOverview.jsx           home screen — a card per project,
-                                    tap one to open it
+                                    tap one to open it; link to the
+                                    archived section when any exist
+    ArchivedProjects.jsx           archived projects list — tap to open
+                                    one normally, or restore it
     DashboardSummary.jsx          income/expense/profit/outstanding cards
     TimeBreakdown.jsx              Σήμερα / Αυτή την εβδομάδα / Αυτόν τον
                                     μήνα income+expense breakdown
@@ -376,10 +409,10 @@ src/
                                     "Διαγραφή" to delete (hidden entirely
                                     for viewer-role collaborators)
     NewProjectModal.jsx            "create project" bottom sheet
-    ProjectSettingsModal.jsx        owner: rename/relocate, delete, CSV
-                                     export, manage collaborators.
-                                     non-owner: CSV export + role info
-                                     only (gear icon in the header)
+    ProjectSettingsModal.jsx        owner: rename/relocate, archive/
+                                     restore, delete, CSV export, manage
+                                     collaborators. non-owner: CSV export
+                                     + role info only (gear icon in header)
     QuickAddModal.jsx              "add entry" bottom sheet — also handles
                                     editing an existing entry and
                                     attaching/removing its receipt photo

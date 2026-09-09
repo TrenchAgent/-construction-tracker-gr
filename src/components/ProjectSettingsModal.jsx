@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { X, FileDown, Trash2, UserPlus } from 'lucide-react'
+import { X, Archive, ArchiveRestore, FileDown, Trash2, UserPlus } from 'lucide-react'
 import { COLLABORATOR_ROLES, COLLABORATOR_ROLE_LABELS } from '../constants'
 
 function CollaboratorsSection({ onLoadCollaborators, onInvite, onRemove }) {
@@ -131,12 +131,14 @@ export default function ProjectSettingsModal({
   onClose,
   onSave,
   onDelete,
+  onArchiveToggle,
   onExport,
   onLoadCollaborators,
   onInviteCollaborator,
   onRemoveCollaborator,
 }) {
   const isOwner = project.role === 'owner'
+  const isArchived = Boolean(project.archivedAt)
   const [name, setName] = useState(project.name)
   const [location, setLocation] = useState(project.location)
   const [error, setError] = useState('')
@@ -151,6 +153,21 @@ export default function ProjectSettingsModal({
     setError('')
     try {
       await onSave({ name: name.trim(), location: location.trim() })
+      onClose()
+    } catch (err) {
+      setError(err.message || 'Κάτι πήγε στραβά, δοκιμάστε ξανά')
+      setBusy(false)
+    }
+  }
+
+  // Reversible either direction, so unlike delete this needs no
+  // confirmation dialog — archiving just moves the project out of the
+  // active list; nothing about its data changes.
+  async function handleArchiveToggle() {
+    setBusy(true)
+    setError('')
+    try {
+      await onArchiveToggle()
       onClose()
     } catch (err) {
       setError(err.message || 'Κάτι πήγε στραβά, δοκιμάστε ξανά')
@@ -180,7 +197,15 @@ export default function ProjectSettingsModal({
         style={{ maxHeight: '85vh', overflowY: 'auto' }}
       >
         <div className="flex items-center mb-4">
-          <h3 className="font-semibold">{isOwner ? 'Ρυθμίσεις έργου' : 'Πληροφορίες έργου'}</h3>
+          <h3 className="font-semibold flex items-center gap-1.5">
+            {isOwner ? 'Ρυθμίσεις έργου' : 'Πληροφορίες έργου'}
+            {isArchived && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-stone-200 text-stone-600 font-medium inline-flex items-center gap-0.5">
+                <Archive size={9} />
+                Αρχειοθετημένο
+              </span>
+            )}
+          </h3>
           <button onClick={onClose} className="ml-auto text-stone-500 p-2.5 -m-2.5">
             <X size={18} />
           </button>
@@ -223,6 +248,17 @@ export default function ProjectSettingsModal({
           <FileDown size={15} />
           Εξαγωγή καταχωρήσεων (CSV)
         </button>
+
+        {isOwner && (
+          <button
+            onClick={handleArchiveToggle}
+            disabled={busy}
+            className="w-full border border-stone-300 text-stone-700 rounded-xl py-2.5 font-medium text-sm mb-1 mt-2 disabled:opacity-60 inline-flex items-center justify-center gap-1.5"
+          >
+            {isArchived ? <ArchiveRestore size={15} /> : <Archive size={15} />}
+            {isArchived ? 'Επαναφορά στα ενεργά έργα' : 'Αρχειοθέτηση έργου'}
+          </button>
+        )}
 
         {isOwner && (
           <>

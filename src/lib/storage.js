@@ -22,7 +22,15 @@
 import { supabase } from './supabaseClient'
 
 function mapProject(row) {
-  return { id: row.id, name: row.name, location: row.location || '', ownerId: row.user_id }
+  return {
+    id: row.id,
+    name: row.name,
+    location: row.location || '',
+    ownerId: row.user_id,
+    // undefined (column not migrated yet on this database) collapses to
+    // null the same as "not archived" — see getProjects' own comment.
+    archivedAt: row.archived_at || null,
+  }
 }
 
 function mapCollaborator(row) {
@@ -113,6 +121,13 @@ export async function setEntryReceiptPath(id, path) {
   return mapEntry(data)
 }
 
+// Returns every project regardless of archived state — active vs.
+// archived is a client-side split (see App.jsx), not two separate
+// queries, since the caller already needs the full list either way (an
+// archived project must stay fully reachable, just out of the default
+// view). `select('*')` degrades safely if archived_at hasn't been
+// migrated onto this database yet: it just isn't one of the columns
+// that comes back, and mapProject treats that the same as "not archived".
 export async function getProjects() {
   const { data, error } = await supabase
     .from('projects')
@@ -120,6 +135,21 @@ export async function getProjects() {
     .order('created_at', { ascending: false })
   if (error) throw error
   return data.map(mapProject)
+}
+
+// null -> active, true -> archived (stamps now()), false -> restore
+// (clears the timestamp). A plain update, not a special endpoint —
+// archiving is reversible and carries no other side effects (unlike
+// deleteProject, nothing else needs cleaning up).
+export async function setProjectArchived(id, archived) {
+  const { data, error } = await supabase
+    .from('projects')
+    .update({ archived_at: archived ? new Date().toISOString() : null })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return mapProject(data)
 }
 
 // One row per project with entries (a project with none just doesn't
