@@ -1,4 +1,4 @@
-import { WifiOff, TriangleAlert, Trash2, Copy, ArrowUpCircle, Percent } from 'lucide-react'
+import { WifiOff, TriangleAlert, Trash2, Copy, ArrowUpCircle, Percent, Receipt, SearchX } from 'lucide-react'
 import {
   CATEGORY_BADGE_STYLES,
   CATEGORY_ICONS,
@@ -10,6 +10,7 @@ import {
 } from '../constants'
 import { formatEUR } from '../lib/format'
 import ReceiptThumbnail from './ReceiptThumbnail'
+import EmptyMoment from './EmptyMoment'
 
 // Every badge icon in this row uses the same 11px size — matches the
 // two sync-state badges (WifiOff/TriangleAlert) that already had icons
@@ -19,12 +20,19 @@ const BADGE_ICON_SIZE = 11
 
 export default function EntryList({ entries, filtersActive, canEdit, onEdit, onDuplicate, onDelete }) {
   if (entries.length === 0) {
-    return (
-      <div className="text-sm text-stone-400 text-center py-10">
-        {filtersActive
-          ? 'Καμία καταχώρηση δεν ταιριάζει με τα φίλτρα.'
-          : 'Δεν υπάρχουν καταχωρήσεις ακόμα.'}
-      </div>
+    // Two genuinely different situations, given two different icons on
+    // purpose — "nothing recorded yet" (an invitation to add the first
+    // one) reads very differently from "nothing matches right now" (a
+    // search came up empty), and conflating them into one generic
+    // message was exactly the "flat" complaint this pass is fixing.
+    return filtersActive ? (
+      <EmptyMoment Icon={SearchX} tone="stone" title="Καμία καταχώρηση δεν ταιριάζει">
+        Δοκιμάστε διαφορετικά φίλτρα ή αναζήτηση.
+      </EmptyMoment>
+    ) : (
+      <EmptyMoment Icon={Receipt} title="Δεν έχετε καταχωρήσεις ακόμα">
+        Πατήστε το «+» για να προσθέσετε την πρώτη καταχώρηση αυτού του έργου.
+      </EmptyMoment>
     )
   }
 

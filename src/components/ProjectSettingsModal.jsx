@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { X, Archive, ArchiveRestore, FileDown, Trash2, UserPlus } from 'lucide-react'
+import { X, Archive, ArchiveRestore, FileDown, Trash2, UserPlus, Users } from 'lucide-react'
 import { COLLABORATOR_ROLES, COLLABORATOR_ROLE_LABELS, COLLABORATOR_ROLE_ICONS } from '../constants'
 import OptionPill from './OptionPill'
 
@@ -66,7 +66,14 @@ function CollaboratorsSection({ onLoadCollaborators, onInvite, onRemove }) {
       {collaborators === null ? (
         <div className="text-xs text-stone-400 mb-2">Φόρτωση…</div>
       ) : collaborators.length === 0 ? (
-        <div className="text-xs text-stone-400 mb-2">Κανένας συνεργάτης ακόμα.</div>
+        // A light touch here on purpose, not the full icon-badge
+        // treatment the bigger empty moments get (EmptyMoment) — this
+        // is a small, secondary line inside an already-busy settings
+        // form, not a whole screen's worth of "there's nothing here."
+        <div className="text-xs text-stone-400 mb-2 flex items-center gap-1.5">
+          <Users size={13} />
+          Δεν έχετε προσκαλέσει συνεργάτη ακόμα.
+        </div>
       ) : (
         <div className="space-y-1.5 mb-3">
           {collaborators.map((c) => (

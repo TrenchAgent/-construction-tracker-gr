@@ -599,6 +599,48 @@ screen in the app after the dashboard — added one per state (`Gift`,
 `CheckCircle2`, `TriangleAlert`), reusing icons already established
 elsewhere for the same meaning rather than introducing new ones.
 
+## Moments of personality
+
+Every "there's nothing here" screen used to be its own one-off — some a
+bare centered icon, some just a plain sentence, none sharing a visual
+language with the others. They're all built on one shared component now
+(`EmptyMoment.jsx`): the icon sits inside a soft circular badge, followed
+by a bold title and a shorter explanatory line, with an optional action
+button underneath. Six spots use it: the true first-run and
+returning-but-empty states (`EmptyState.jsx`), an empty entry list split
+into two genuinely different messages (`EntryList.jsx` — see below), no
+archived projects yet and everything-is-archived (`ArchivedProjects.jsx`,
+`ProjectsOverview.jsx`).
+
+The entry list's empty state deliberately isn't one message: "you have no
+entries yet" (an invitation — tap "+" to add the first one) and "no entry
+matches your filters" (a search came up empty) are different situations,
+so they get different icons (`Receipt` vs. `SearchX`) and different copy,
+not one generic "nothing here" line stretched to cover both. One spot
+was deliberately *not* switched to `EmptyMoment` — the "no collaborators
+invited yet" line inside the project settings form. It's a small,
+secondary line in an already-busy form, not a whole screen's worth of
+"there's nothing here," so it kept a light one-line treatment (a small
+icon plus text) instead of a full icon-badge moment that would compete
+with the form around it for attention.
+
+Two real bugs came out of verifying this, not just eyeballing it:
+
+- The badge's default text colors, measured against the WCAG formula
+  the same way every other color in this app has been, came out at
+  6.37:1 and **3.81:1** — the second one below even the 4.5:1 WCAG AA
+  minimum, not just short of this app's own stricter 7:1 bar. A real
+  accessibility bug, caught before shipping rather than after. Darkened
+  both a step; re-measured at 8.28:1 and 8.19:1.
+- At the new bolder title size, a long "no filter matches" message could
+  render as a single line landing directly under the fixed "add entry"
+  button (bottom-right, always on top) — confirmed by bounding-box
+  overlap, not just a glance at a screenshot: the button was genuinely
+  covering part of the text. A first attempt at a width limit didn't
+  fix it; fixed properly by measuring the actual widest realistic phrase
+  in the app at the real font/weight/size and setting a width that
+  forces a guaranteed two-line wrap, then re-verified there's no overlap.
+
 ## Project structure
 
 ```
@@ -664,6 +706,9 @@ src/
                                      every picker (kind, category,
                                      status, method, collaborator role)
                                      — see Selectable options above
+    EmptyMoment.jsx                  shared icon-badge + title + message
+                                      for every "nothing here" screen —
+                                      see Moments of personality above
     ReceiptThumbnail.jsx            small clickable receipt photo →
                                      full-size lightbox on tap. Used by
                                      both EntryList.jsx and QuickAddModal.jsx

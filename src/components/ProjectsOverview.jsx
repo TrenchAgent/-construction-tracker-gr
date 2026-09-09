@@ -1,5 +1,6 @@
 import { Archive, MapPin, Plus, Users } from 'lucide-react'
 import { formatEUR } from '../lib/format'
+import EmptyMoment from './EmptyMoment'
 
 // One card per project — name, location, profit/loss, and outstanding
 // amount, so the user can tell what needs attention before drilling into
@@ -32,9 +33,9 @@ export default function ProjectsOverview({
           having created one — see EmptyState/App.jsx for that case) —
           say so plainly rather than showing a silently empty list. */}
       {projects.length === 0 && archivedCount > 0 && (
-        <div className="text-sm text-stone-400 text-center py-6">
-          Όλα τα έργα σας είναι αρχειοθετημένα.
-        </div>
+        <EmptyMoment Icon={Archive} tone="stone" title="Όλα τα έργα σας είναι αρχειοθετημένα">
+          Δείτε τα στα «Αρχειοθετημένα έργα» παρακάτω, ή ξεκινήστε κάτι νέο.
+        </EmptyMoment>
       )}
 
       <div className="space-y-2">

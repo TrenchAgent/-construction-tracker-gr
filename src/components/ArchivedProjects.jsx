@@ -1,4 +1,5 @@
-import { ArchiveRestore, ChevronLeft, MapPin } from 'lucide-react'
+import { Archive, ArchiveRestore, ChevronLeft, MapPin } from 'lucide-react'
+import EmptyMoment from './EmptyMoment'
 
 // Reachable only via the "Αρχειοθετημένα έργα" link on the overview
 // screen (see ProjectsOverview) — a lightweight sub-view, not a full
@@ -20,7 +21,9 @@ export default function ArchivedProjects({ projects, onBack, onSelectProject, on
       <h2 className="font-display font-bold text-lg text-stone-800 mb-3">Αρχειοθετημένα έργα</h2>
 
       {sorted.length === 0 ? (
-        <div className="text-sm text-stone-400 text-center py-10">Δεν υπάρχουν αρχειοθετημένα έργα.</div>
+        <EmptyMoment Icon={Archive} tone="stone" title="Δεν έχετε αρχειοθετημένα έργα">
+          Ό,τι έργο αρχειοθετήσετε θα εμφανίζεται εδώ.
+        </EmptyMoment>
       ) : (
         <div className="space-y-2">
           {sorted.map((p) => (
