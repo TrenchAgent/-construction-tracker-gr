@@ -18,13 +18,13 @@ export default function Header({
         // just technically clickable.
         <button
           onClick={onGoHome}
-          className="text-orange-700 shrink-0 p-2.5 -ml-2.5 rounded-lg active:bg-stone-200"
+          className="text-rust-700 shrink-0 p-2.5 -ml-2.5 rounded-lg active:bg-stone-200"
           aria-label="Όλα τα έργα"
         >
           <HardHat className="w-5 h-5" strokeWidth={2.25} />
         </button>
       ) : (
-        <HardHat className="w-5 h-5 text-orange-700 shrink-0" strokeWidth={2.25} />
+        <HardHat className="w-5 h-5 text-rust-700 shrink-0" strokeWidth={2.25} />
       )}
       <div className="flex-1 min-w-0 ml-1">
         {inProject ? (

@@ -643,7 +643,7 @@ export default function App({ session, onSignOut }) {
             <h3 className="font-display font-bold text-lg text-stone-800">Καταχωρήσεις</h3>
             <button
               onClick={() => setShowNewProject(true)}
-              className="text-xs text-orange-700 font-medium flex items-center gap-0.5"
+              className="text-xs text-rust-700 font-medium flex items-center gap-0.5"
             >
               <Plus size={13} />
               Νέο έργο
@@ -667,7 +667,7 @@ export default function App({ session, onSignOut }) {
         <button
           onClick={openQuickAdd}
           className={
-            'fixed right-5 bg-orange-700 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center transition-[bottom] duration-200 ' +
+            'fixed right-5 bg-rust-700 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center transition-[bottom] duration-200 ' +
             // A toast (either kind) sits in this exact corner and is
             // solid, not translucent — without this, it doesn't just
             // cover the FAB, it eats the tap: found by actually trying

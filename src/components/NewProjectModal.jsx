@@ -50,7 +50,7 @@ export default function NewProjectModal({ onClose, onCreate }) {
         <button
           onClick={handleCreate}
           disabled={busy}
-          className="w-full bg-orange-700 text-white rounded-xl py-2.5 font-medium text-sm mt-1 disabled:opacity-60"
+          className="w-full bg-rust-700 text-white rounded-xl py-2.5 font-medium text-sm mt-1 disabled:opacity-60"
         >
           {busy ? 'Δημιουργία…' : 'Δημιουργία έργου'}
         </button>

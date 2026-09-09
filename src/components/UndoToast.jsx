@@ -12,7 +12,7 @@ export default function UndoToast({ pending, onUndo, durationMs }) {
         <span className="flex-1 text-sm truncate">{pending.label}</span>
         <button
           onClick={onUndo}
-          className="text-sm font-semibold text-orange-300 flex items-center gap-1 shrink-0"
+          className="text-sm font-semibold text-rust-300 flex items-center gap-1 shrink-0"
         >
           <Undo2 size={14} />
           Αναίρεση
@@ -25,7 +25,7 @@ export default function UndoToast({ pending, onUndo, durationMs }) {
             animation state instead of starting a fresh countdown. */}
         <div
           key={pending.id}
-          className="h-full bg-orange-400"
+          className="h-full bg-rust-400"
           style={{ animation: `shrink-width ${durationMs}ms linear forwards` }}
         />
       </div>

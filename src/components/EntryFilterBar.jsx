@@ -29,13 +29,13 @@ export default function EntryFilterBar({ filters, onChange }) {
           className={
             'shrink-0 p-2.5 rounded-lg border relative ' +
             (expanded || active
-              ? 'border-orange-700 text-orange-800 bg-orange-50'
+              ? 'border-rust-700 text-rust-800 bg-rust-50'
               : 'border-stone-300 text-stone-500')
           }
         >
           <SlidersHorizontal size={16} />
           {active && (
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-orange-700" />
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rust-700" />
           )}
         </button>
       </div>

@@ -9,7 +9,7 @@ import { HardHat, Plus } from 'lucide-react'
 export default function EmptyState({ isFirstRun, onNewProject }) {
   return (
     <div className="p-8 text-center mt-16">
-      <HardHat size={40} strokeWidth={1.75} className="mx-auto text-orange-700 mb-3" />
+      <HardHat size={40} strokeWidth={1.75} className="mx-auto text-rust-700 mb-3" />
       <h2 className="font-display font-bold text-xl mb-1">
         {isFirstRun ? 'Καλώς ήρθατε στη Διαχείριση Έργου' : 'Ξεκινήστε ένα νέο έργο'}
       </h2>
@@ -25,7 +25,7 @@ export default function EmptyState({ isFirstRun, onNewProject }) {
       )}
       <button
         onClick={onNewProject}
-        className="bg-orange-700 text-white px-4 py-2.5 rounded-xl font-medium text-sm inline-flex items-center gap-1.5"
+        className="bg-rust-700 text-white px-4 py-2.5 rounded-xl font-medium text-sm inline-flex items-center gap-1.5"
       >
         <Plus className="w-4 h-4" />
         Νέο έργο

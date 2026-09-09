@@ -105,7 +105,7 @@ function CollaboratorsSection({ onLoadCollaborators, onInvite, onRemove }) {
             className={
               'py-1.5 rounded-lg text-xs font-medium border ' +
               (role === r
-                ? 'border-orange-700 text-orange-800 bg-orange-50'
+                ? 'border-rust-700 text-rust-800 bg-rust-50'
                 : 'border-stone-300 text-stone-600')
             }
           >
@@ -229,7 +229,7 @@ export default function ProjectSettingsModal({
             <button
               onClick={handleSave}
               disabled={busy}
-              className="w-full bg-orange-700 text-white rounded-xl py-2.5 font-medium text-sm mb-3 disabled:opacity-60"
+              className="w-full bg-rust-700 text-white rounded-xl py-2.5 font-medium text-sm mb-3 disabled:opacity-60"
             >
               {busy ? 'Αποθήκευση…' : 'Αποθήκευση αλλαγών'}
             </button>

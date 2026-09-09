@@ -45,6 +45,28 @@
   --font-display: "Fira Sans Condensed", system-ui, sans-serif;
   /* Everything else — labels, buttons, form fields, entry notes. */
   --font-sans: "Inter", system-ui, sans-serif;
+
+  /* The app's own primary accent — a developed rust/terracotta scale,
+     not Tailwind's stock orange (which this replaces everywhere:
+     bg-rust-700 etc. throughout the codebase were all Tailwind's
+     built-in palette, not a real brand color). Still in the same
+     rust/brick family construction contexts expect, but deliberately
+     less saturated/more clay-like than Tailwind's rust-600
+     (#EA580C reads as "traffic cone"; this reads closer to oxidized
+     iron or fired clay). Every step's actual contrast against white
+     and against stone-900 is verified after building, not assumed —
+     see the commit this came from for the exact ratios measured. */
+  --color-rust-50: #fcf4f1;
+  --color-rust-100: #f8e3db;
+  --color-rust-200: #f0c4b3;
+  --color-rust-300: #e39d80;
+  --color-rust-400: #d0754f;
+  --color-rust-500: #bb5934;
+  --color-rust-600: #a8472a;
+  --color-rust-700: #8a3820;
+  --color-rust-800: #6e2d1a;
+  --color-rust-900: #582515;
+  --color-rust-950: #301209;
 }
 
 html,

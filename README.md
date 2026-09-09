@@ -486,6 +486,37 @@ no color value anywhere was touched, only font-family/weight/size — so
 the outdoor-readability contrast ratios from that earlier pass are
 provably unaffected, not just assumed fine.
 
+## Color system
+
+The primary accent is a real, developed rust/terracotta scale
+(`--color-rust-50` through `--color-rust-950` in `src/index.css`),
+replacing Tailwind's stock orange everywhere it was used (`bg-orange-700`
+etc. — literally the built-in palette, not a brand color). Still in the
+same rust/brick family a construction app should be, but deliberately
+less saturated than Tailwind's orange-600 (which reads as "traffic
+cone"); this reads closer to oxidized iron or fired clay. The PWA's own
+`theme_color` (manifest + `<meta>` tag — the color a phone tints its
+status bar/app-switcher card with) was updated to match.
+
+Income and expense now get their own tinted surface — a soft colored
+background plus a matching border — on the dashboard's stat cards and
+the overview's per-project chips, not just colored text on a plain
+white card. Κέρδος/Ζημία (profit/loss) goes a step further: a visibly
+"hero" treatment — thicker colored border, a bigger figure, its own
+icon — so it reads as the headline stat of the dashboard, not just a
+third card in the row underneath the first two.
+
+This explicitly could have regressed the outdoor-readability pass's
+contrast numbers (new backgrounds sitting behind mostly-unchanged text
+colors), so every foreground/background pair actually touched here was
+re-measured with the exact WCAG formula against the real rendered
+pixels (not eyeballed, not assumed from the color names) — including a
+few new caption labels this pass introduced, held to the same 7:1
+(AAA) bar the amounts already cleared, not just the 4.5:1 minimum.
+Every one of them clears 7:1. Two labels (`amber-700`, one case of
+`amber-800`) needed bumping a step darker to actually clear it —
+caught by the measurement, not before it.
+
 ## Project structure
 
 ```

@@ -114,7 +114,7 @@ export default function EntryList({ entries, filtersActive, canEdit, onEdit, onD
                 <div className="flex items-center gap-1 justify-end mt-1 -mr-1.5">
                   <button
                     onClick={() => onDuplicate(e)}
-                    className="text-stone-500 hover:text-orange-700 active:bg-stone-100 text-xs inline-flex items-center gap-1 py-2.5 px-1.5 rounded-lg"
+                    className="text-stone-500 hover:text-rust-700 active:bg-stone-100 text-xs inline-flex items-center gap-1 py-2.5 px-1.5 rounded-lg"
                   >
                     <Copy size={13} />
                     Αντιγραφή

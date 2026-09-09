@@ -31,7 +31,7 @@ export default function LoginScreen() {
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-stone-50 flex flex-col items-center justify-center px-6 text-stone-900">
-      <HardHat size={40} strokeWidth={1.75} className="text-orange-700 mb-3" />
+      <HardHat size={40} strokeWidth={1.75} className="text-rust-700 mb-3" />
       <h1 className="font-semibold text-lg mb-1">Διαχείριση Έργου</h1>
       <p className="text-sm text-stone-500 mb-1 text-center">
         Συνδεθείτε με το email σας για να βλέπετε τα έργα σας σε κάθε συσκευή.
@@ -63,7 +63,7 @@ export default function LoginScreen() {
             <button
               onClick={sendLink}
               disabled={busy}
-              className="w-full bg-orange-700 text-white rounded-xl py-2.5 font-medium text-sm disabled:opacity-60"
+              className="w-full bg-rust-700 text-white rounded-xl py-2.5 font-medium text-sm disabled:opacity-60"
             >
               {busy ? 'Αποστολή…' : 'Αποστολή συνδέσμου'}
             </button>

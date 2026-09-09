@@ -21,7 +21,7 @@ export default function ProjectsOverview({
         <h2 className="font-display font-bold text-lg text-stone-800">Τα έργα μου</h2>
         <button
           onClick={onNewProject}
-          className="text-xs text-orange-700 font-medium flex items-center gap-0.5"
+          className="text-xs text-rust-700 font-medium flex items-center gap-0.5"
         >
           <Plus size={13} />
           Νέο έργο
@@ -62,9 +62,11 @@ export default function ProjectsOverview({
                   {p.location}
                 </div>
               )}
-              <div className="flex items-center gap-3 flex-wrap">
-                <div>
-                  <div className="text-[11px] text-stone-500">Κέρδος / Ζημία</div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className={'rounded-lg px-2.5 py-1.5 ' + (profit >= 0 ? 'bg-emerald-50' : 'bg-rose-50')}>
+                  <div className={'text-[10px] font-medium ' + (profit >= 0 ? 'text-emerald-800' : 'text-rose-800')}>
+                    Κέρδος / Ζημία
+                  </div>
                   <div
                     className={
                       'font-display font-bold text-lg tabular-nums ' +
@@ -75,8 +77,8 @@ export default function ProjectsOverview({
                   </div>
                 </div>
                 {summary.pendingAmount > 0 && (
-                  <div>
-                    <div className="text-[11px] text-stone-500">Εκκρεμή</div>
+                  <div className="rounded-lg px-2.5 py-1.5 bg-amber-50">
+                    <div className="text-[10px] font-medium text-amber-900">Εκκρεμή</div>
                     <div className="font-display font-bold text-lg tabular-nums text-amber-900">
                       {formatEUR(summary.pendingAmount)}
                     </div>

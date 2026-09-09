@@ -20,7 +20,10 @@ export default defineConfig({
         start_url: '/',
         display: 'standalone',
         background_color: '#fafaf9',
-        theme_color: '#c2410c',
+        // Matches --color-rust-700 in src/index.css — the app's real
+        // brand color now, not Tailwind's stock orange-700 this used to
+        // literally be (#c2410c).
+        theme_color: '#8a3820',
         icons: [
           {
             src: '/icon-192.png',

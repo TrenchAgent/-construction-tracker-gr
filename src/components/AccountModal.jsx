@@ -135,7 +135,7 @@ function StatusCard({ subscription, busy, error, onUpgrade }) {
       <button
         onClick={onUpgrade}
         disabled={busy}
-        className="w-full bg-orange-700 text-white rounded-xl py-2.5 font-medium text-sm disabled:opacity-60"
+        className="w-full bg-rust-700 text-white rounded-xl py-2.5 font-medium text-sm disabled:opacity-60"
       >
         {busy ? 'Μεταφορά…' : 'Ξεκινήστε τη δωρεάν δοκιμή'}
       </button>
