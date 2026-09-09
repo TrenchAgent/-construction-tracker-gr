@@ -27,6 +27,7 @@ function mapProject(row) {
     name: row.name,
     location: row.location || '',
     ownerId: row.user_id,
+    createdAt: row.created_at,
     // undefined (column not migrated yet on this database) collapses to
     // null the same as "not archived" — see getProjects' own comment.
     archivedAt: row.archived_at || null,

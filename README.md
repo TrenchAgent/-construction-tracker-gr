@@ -226,6 +226,26 @@ partial, across both income and expenses), and a Σήμερα / Αυτή την
 εβδομάδα / Αυτόν τον μήνα breakdown of income and expenses (Monday-start
 week, matching the usual Greek convention).
 
+## Monthly trend chart
+
+A per-project bar chart, income vs. expense by calendar month, sitting
+between the time breakdown and the entry list. Shows the last 6 months,
+or fewer if the project itself is younger than that — a 2-month-old
+project gets 2 bars, not 6 with 4 empty ones — but never fewer months
+than actually exist since the project's own creation date. It's always
+a fixed calendar window, not "months that happen to have entries," so a
+gap in the middle (a month with no activity) shows as a real gap, on
+purpose — that's glance-value information too, not noise to filter out.
+
+Deliberately just the two totals per month, nothing computed on top —
+no averages, no month-over-month change, no projected rate. That
+matches an earlier, explicit scope decision to leave that kind of
+analysis out of this app entirely (see "What's in v1" below); this
+chart doesn't quietly reintroduce it through the back door. No new
+charting library either — hand-rolled with plain divs sized by
+percentage of the tallest bar in view, keeping the bundle-size
+discipline from earlier work in this project.
+
 ## Working with no signal (offline entries)
 
 Construction sites often have bad or no signal. Adding a new expense or
@@ -411,6 +431,9 @@ src/
   lib/onboarding.js               the "has this user ever had a project"
                                    flag behind the first-run message (see
                                    First-run experience above)
+  lib/dates.js                    plain "YYYY-MM-DD" date parsing shared
+                                   by TimeBreakdown.jsx and
+                                   MonthlyTrendChart.jsx
   components/
     AuthGate.jsx                shows LoginScreen or the app, based on
                                  whether there's a signed-in session
@@ -430,6 +453,8 @@ src/
     DashboardSummary.jsx          income/expense/profit/outstanding cards
     TimeBreakdown.jsx              Σήμερα / Αυτή την εβδομάδα / Αυτόν τον
                                     μήνα income+expense breakdown
+    MonthlyTrendChart.jsx           income vs. expense bar chart by
+                                     month, see Monthly trend chart above
     EntryFilterBar.jsx              search + category/status/date-range
                                      filter panel above the entry list
     EntryList.jsx                  the entry list — tap a row to edit,

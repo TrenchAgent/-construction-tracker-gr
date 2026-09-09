@@ -6,6 +6,7 @@ import ProjectsOverview from './components/ProjectsOverview'
 import ArchivedProjects from './components/ArchivedProjects'
 import DashboardSummary from './components/DashboardSummary'
 import TimeBreakdown from './components/TimeBreakdown'
+import MonthlyTrendChart from './components/MonthlyTrendChart'
 import EntryList from './components/EntryList'
 import EntryFilterBar from './components/EntryFilterBar'
 import { EMPTY_FILTERS, applyEntryFilters, isFilterActive } from './lib/entryFilters'
@@ -579,6 +580,8 @@ export default function App({ session, onSignOut }) {
           />
 
           <TimeBreakdown entries={visibleEntries} />
+
+          <MonthlyTrendChart entries={visibleEntries} projectCreatedAt={activeProject?.createdAt} />
 
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-stone-700">Καταχωρήσεις</h3>
