@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
+import { X, Gift, CheckCircle2, TriangleAlert } from 'lucide-react'
 import { getSubscription, startCheckout } from '../lib/billing'
 
 const PRICE_LABEL = '19,00 €/μήνα' // placeholder — swap for a real price whenever that's decided
@@ -89,11 +89,14 @@ function StatusCard({ subscription, busy, error, onUpgrade }) {
 
   if (status === 'trialing') {
     return (
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-        <div className="font-semibold text-blue-900 mb-1">Δωρεάν δοκιμή</div>
-        <div className="text-sm text-blue-800">
-          {daysLeft(subscription.current_period_end)} ημέρες ακόμα — η συνδρομή θα ξεκινήσει
-          στις {formatDateGr(subscription.current_period_end)}.
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
+        <Gift size={20} className="text-blue-700 shrink-0 mt-0.5" />
+        <div>
+          <div className="font-semibold text-blue-900 mb-1">Δωρεάν δοκιμή</div>
+          <div className="text-sm text-blue-800">
+            {daysLeft(subscription.current_period_end)} ημέρες ακόμα — η συνδρομή θα ξεκινήσει
+            στις {formatDateGr(subscription.current_period_end)}.
+          </div>
         </div>
       </div>
     )
@@ -101,10 +104,13 @@ function StatusCard({ subscription, busy, error, onUpgrade }) {
 
   if (status === 'active') {
     return (
-      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-        <div className="font-semibold text-emerald-900 mb-1">Ενεργή συνδρομή</div>
-        <div className="text-sm text-emerald-800">
-          Ανανεώνεται στις {formatDateGr(subscription.current_period_end)}.
+      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex gap-3">
+        <CheckCircle2 size={20} className="text-emerald-700 shrink-0 mt-0.5" />
+        <div>
+          <div className="font-semibold text-emerald-900 mb-1">Ενεργή συνδρομή</div>
+          <div className="text-sm text-emerald-800">
+            Ανανεώνεται στις {formatDateGr(subscription.current_period_end)}.
+          </div>
         </div>
       </div>
     )
@@ -112,10 +118,13 @@ function StatusCard({ subscription, busy, error, onUpgrade }) {
 
   if (status === 'past_due' || status === 'unpaid') {
     return (
-      <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
-        <div className="font-semibold text-rose-900 mb-1">Πρόβλημα πληρωμής</div>
-        <div className="text-sm text-rose-800">
-          Η πληρωμή της συνδρομής απέτυχε — ελέγξτε τα στοιχεία κάρτας σας.
+      <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex gap-3">
+        <TriangleAlert size={20} className="text-rose-700 shrink-0 mt-0.5" />
+        <div>
+          <div className="font-semibold text-rose-900 mb-1">Πρόβλημα πληρωμής</div>
+          <div className="text-sm text-rose-800">
+            Η πληρωμή της συνδρομής απέτυχε — ελέγξτε τα στοιχεία κάρτας σας.
+          </div>
         </div>
       </div>
     )

@@ -553,6 +553,52 @@ checking at the end — that measures whichever one you last clicked
 away from, not the one you meant to). Darkened one step each
 (`-700` → `-800`) and re-measured clean.
 
+## Icon audit
+
+Every icon in the app was checked against two things: does it actually
+mean something specific (not generic filler), and is it consistent
+with every other icon doing the same conceptual job elsewhere. Two
+real findings, both fixed:
+
+- Income/expense had **three different icon languages** for the same
+  up/down concept scattered across the app — plain `ArrowUp`/`ArrowDown`
+  on the dashboard's stat-card captions, `ArrowUpCircle`/`ArrowDownCircle`
+  on the kind toggle (Part 3), `TrendingUp`/`TrendingDown` on the
+  profit/loss hero card. The hero card's Trending pair stays — it's a
+  genuinely different concept (the *direction* of profit, not "is this
+  row income or expense") — but the stat-card captions switched to the
+  same Circle pair the kind toggle uses, since they're the exact same
+  concept and were the odd one out.
+- Category, payment-status, income, VAT, and payment-method badges on
+  every entry had **no icons at all** — plain colored text, while the
+  two sync-state badges right next to them (offline-queued, sync
+  failed) already did. All five now carry one, reusing the exact icon
+  set the pickers already established in Part 3 (so picking "Υλικά" in
+  Quick Add and seeing its badge afterward is the same icon, not just
+  the same color) — plus a new `Percent` icon for the VAT flag.
+  Every badge icon uses the same 11px size, matching the two that
+  already existed there, so the new ones don't read as a slightly
+  different icon set sitting right next to the old ones. Since only
+  icons were added — no background or text color changed — this
+  couldn't have regressed the outdoor-readability contrast numbers,
+  but re-measured every affected badge anyway rather than assuming;
+  all still clear 7:1 (AAA), most comfortably above it.
+
+One thing deliberately left alone: the app's own HardHat logo uses a
+heavier stroke at its small size (header, ~20px) than at its large,
+decorative size (empty state, login screen, 40px) — checked whether
+that was a real inconsistency or a deliberate size correction, and it
+turned out to be applied with zero exceptions across every use at each
+size. Left it as-is rather than "fixing" something that already works
+the way it should.
+
+Also picked up along the way, one level up from icons specifically:
+the subscription-status cards in the account modal (trial/active/
+payment problem) had zero icons on what's the most content-heavy
+screen in the app after the dashboard — added one per state (`Gift`,
+`CheckCircle2`, `TriangleAlert`), reusing icons already established
+elsewhere for the same meaning rather than introducing new ones.
+
 ## Project structure
 
 ```

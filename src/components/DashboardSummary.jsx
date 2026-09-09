@@ -1,4 +1,4 @@
-import { ArrowUp, ArrowDown, TrendingDown, TrendingUp } from 'lucide-react'
+import { ArrowUpCircle, ArrowDownCircle, TrendingDown, TrendingUp } from 'lucide-react'
 import { formatEUR } from '../lib/format'
 
 // Income/expense get their own tinted surface (a soft colored
@@ -9,6 +9,12 @@ import { formatEUR } from '../lib/format'
 // visibly bigger, bolder "hero" treatment (thicker border, larger
 // figure, its own tint) so it's unmistakably the headline stat of the
 // screen, not just a third card in the row below the first two.
+//
+// The caption icons use the same ArrowUpCircle/ArrowDownCircle pair as
+// the kind toggle in QuickAddModal — same underlying concept (this
+// number is income vs. expense), so the same icon shape, not the plain
+// (non-circle) Arrow icons this used before an icon-consistency audit
+// caught the mismatch.
 export default function DashboardSummary({ income, expense, profit, pendingAmount }) {
   const isProfit = profit >= 0
   return (
@@ -16,14 +22,14 @@ export default function DashboardSummary({ income, expense, profit, pendingAmoun
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
           <div className="text-xs text-emerald-800 mb-1 flex items-center gap-1">
-            <ArrowUp size={12} />
+            <ArrowUpCircle size={12} />
             Έσοδα
           </div>
           <div className="font-display font-bold text-xl tabular-nums text-emerald-800">{formatEUR(income)}</div>
         </div>
         <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
           <div className="text-xs text-rose-800 mb-1 flex items-center gap-1">
-            <ArrowDown size={12} />
+            <ArrowDownCircle size={12} />
             Έξοδα
           </div>
           <div className="font-display font-bold text-xl tabular-nums text-rose-800">{formatEUR(expense)}</div>
