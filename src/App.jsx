@@ -15,6 +15,7 @@ import QuickAddModal from './components/QuickAddModal'
 import ProjectSettingsModal from './components/ProjectSettingsModal'
 import AccountModal from './components/AccountModal'
 import UndoToast from './components/UndoToast'
+import StatusToast from './components/StatusToast'
 import * as storage from './lib/storage'
 import * as outbox from './lib/outbox'
 import * as onboarding from './lib/onboarding'
@@ -26,6 +27,11 @@ import { entriesToCsv, slugifyFilename, downloadCsv } from './lib/csv'
 // below), so "Undo" genuinely means "never send it," not "put back
 // something already gone."
 const UNDO_WINDOW_MS = 5000
+
+// How long a plain success confirmation (StatusToast) stays up before
+// auto-dismissing — shorter than the undo window on purpose: there's
+// nothing to act on here, it only needs to be readable once.
+const STATUS_DURATION_MS = 2500
 
 // A network-layer failure (no connection at all) looks different from a
 // real server rejection (bad data, RLS denial, etc.) — supabase-js's
@@ -94,6 +100,21 @@ export default function App({ session, onSignOut }) {
     pendingDeleteRef.current = pendingDelete
   }, [pendingDelete])
 
+  // { id, message } | null — the plain "that worked" confirmation for
+  // every save/create/archive/invite action that used to rely on
+  // nothing but its modal closing. Deliberately one slot, same as
+  // pendingDelete above: a second success while one's showing just
+  // replaces it, nothing stacks. If a delete's undo toast is showing at
+  // the same time, that one wins the bottom-of-screen spot (see the
+  // render below) — protecting the chance to undo something matters
+  // more than a same-moment "saved" confirmation — but this isn't lost,
+  // just deferred: it's still set here, so it appears the moment the
+  // undo toast clears.
+  const [status, setStatus] = useState(null)
+  function showStatus(message) {
+    setStatus({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, message })
+  }
+
   // flushOutbox (below) is called from the 'online' event listener, which
   // can fire long after the render that registered it — a plain closure
   // over activeId would see whatever project was active back then, not
@@ -117,6 +138,11 @@ export default function App({ session, onSignOut }) {
     const item = outbox.enqueue(session.user.id, activeId, fields)
     setEntries((list) => [{ ...fields, id: item.localId, pendingSync: true }, ...list])
     setPendingCount((n) => n + 1)
+    // Queued, not yet synced — but from the user's own point of view
+    // tapping save DID work (see saveEntry's comment), so it gets the
+    // same confirmation as a normal save. The separate persistent
+    // "N pending" banner is what communicates the ongoing sync state.
+    showStatus('Η καταχώρηση αποθηκεύτηκε')
   }
 
   // Walks the queue in order and tries to actually save each one.
@@ -256,6 +282,7 @@ export default function App({ session, onSignOut }) {
     setProjects((list) => [{ ...project, role: 'owner' }, ...list])
     onboarding.markHasHadProject(session.user.id)
     await switchProject(project.id)
+    showStatus('Το έργο δημιουργήθηκε')
   }
 
   // Same contract: throws on failure, QuickAddModal displays it. Handles
@@ -272,6 +299,7 @@ export default function App({ session, onSignOut }) {
     if (editingEntry) {
       const saved = await storage.updateEntry(editingEntry.id, fields)
       setEntries((list) => list.map((e) => (e.id === saved.id ? saved : e)))
+      showStatus('Οι αλλαγές αποθηκεύτηκαν')
       return
     }
 
@@ -283,6 +311,7 @@ export default function App({ session, onSignOut }) {
     try {
       const saved = await storage.addEntry(activeId, fields)
       setEntries((list) => [saved, ...list])
+      showStatus('Η καταχώρηση αποθηκεύτηκε')
     } catch (err) {
       if (isLikelyOffline(err)) {
         queueEntryLocally(fields)
@@ -327,7 +356,15 @@ export default function App({ session, onSignOut }) {
     return path
   }
 
-  // Throws on failure — QuickAddModal displays it.
+  // Throws on failure — QuickAddModal displays it. No showStatus() here
+  // (or in removeReceipt below) on purpose, unlike the other actions in
+  // this audit: both happen inline, while the modal stays open, and
+  // already have their own immediate, in-context feedback (the
+  // thumbnail itself appearing/disappearing, plus QuickAddModal's own
+  // receiptBusy/receiptError state) — the "modal just closes, was that
+  // it?" ambiguity this pass is fixing doesn't apply here. A bottom
+  // toast would also risk visually landing on top of the still-open
+  // modal's own controls.
   async function removeReceipt(entryId, path) {
     await storage.setEntryReceiptPath(entryId, null)
     await storage.deleteReceiptFile(path).catch(() => {}) // best-effort; the entry no longer points at it either way
@@ -409,6 +446,7 @@ export default function App({ session, onSignOut }) {
   async function updateProject(fields) {
     const saved = await storage.updateProject(activeId, fields)
     setProjects((list) => list.map((p) => (p.id === saved.id ? { ...saved, role: p.role } : p)))
+    showStatus('Οι αλλαγές αποθηκεύτηκαν')
   }
 
   // Confirmation already happened in ProjectSettingsModal before this is
@@ -441,6 +479,7 @@ export default function App({ session, onSignOut }) {
       // at one that's no longer there.
       goToOverview()
     }
+    showStatus(wasArchived ? 'Το έργο επανήλθε στα ενεργά έργα' : 'Το έργο αρχειοθετήθηκε')
   }
 
   // Called from the Archived section (see ArchivedProjects) — stays on
@@ -449,6 +488,7 @@ export default function App({ session, onSignOut }) {
   async function restoreProject(id) {
     const saved = await storage.setProjectArchived(id, false)
     setProjects((list) => list.map((p) => (p.id === saved.id ? { ...saved, role: p.role } : p)))
+    showStatus('Το έργο επανήλθε στα ενεργά έργα')
   }
 
   function exportCsv() {
@@ -461,6 +501,13 @@ export default function App({ session, onSignOut }) {
   async function loadCollaborators() {
     return storage.getCollaborators(activeId)
   }
+  // No showStatus() here, same reasoning as attachReceipt/removeReceipt
+  // above: this happens inline while ProjectSettingsModal stays open —
+  // confirmed by trying it and looking, a toast here visually sits
+  // against the still-open modal's own content and would cover the
+  // Delete button below the collaborators list as it grows. The list
+  // updating in place (plus the input clearing) is already the
+  // in-context feedback for this one.
   async function inviteCollaborator({ email, role }) {
     return storage.addCollaborator(activeId, { email, role })
   }
@@ -509,6 +556,18 @@ export default function App({ session, onSignOut }) {
   // above (income/expense/profit/pending, time breakdown) always reflect
   // the whole project, not just whatever's currently filtered into view.
   const filteredEntries = applyEntryFilters(visibleEntries, filters)
+  // A toast (undo or status) always renders above every modal (z-40 vs.
+  // a modal's z-20) — right, since it should never be trapped behind
+  // one, but that also means it can land on top of a modal's own
+  // buttons at the screen's bottom edge, exactly where a modal's
+  // primary action usually sits. Found by actually trying to tap a
+  // modal's Save button right after a delete, not by eyeballing a
+  // screenshot: the tap landed on the toast's Undo button instead.
+  // Simplest correct fix is to not render either toast at all while any
+  // modal has the user's attention — the underlying timer (for an undo
+  // window) keeps running regardless, so nothing here is lost, only
+  // deferred until every modal closes.
+  const anyModalOpen = showNewProject || showQuickAdd || showProjectSettings || showAccount
 
   if (loading) {
     return (
@@ -610,7 +669,16 @@ export default function App({ session, onSignOut }) {
       {!showOverview && activeProject && canEdit && (
         <button
           onClick={openQuickAdd}
-          className="fixed bottom-5 right-5 bg-orange-700 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center"
+          className={
+            'fixed right-5 bg-orange-700 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center transition-[bottom] duration-200 ' +
+            // A toast (either kind) sits in this exact corner and is
+            // solid, not translucent — without this, it doesn't just
+            // cover the FAB, it eats the tap: found by actually trying
+            // to tap "add entry" right after a delete and checking what
+            // element was really underneath (the toast's own Undo
+            // button), not just eyeballing a screenshot.
+            (!anyModalOpen && (pendingDelete || status) ? 'bottom-24' : 'bottom-5')
+          }
           style={{ maxWidth: '28rem' }}
           aria-label="Νέα καταχώρηση"
         >
@@ -657,7 +725,18 @@ export default function App({ session, onSignOut }) {
         />
       )}
 
-      <UndoToast pending={pendingDelete} onUndo={undoPendingDelete} durationMs={UNDO_WINDOW_MS} />
+      {/* Only one toast at the bottom at a time — an undo window in
+          progress always wins that spot over a plain success message
+          (see the `status` state comment above for why); the status
+          message isn't lost, just deferred until the undo toast clears.
+          Neither renders at all while a modal is open (see
+          anyModalOpen above) — deferred the same way, not lost. */}
+      {!anyModalOpen &&
+        (pendingDelete ? (
+          <UndoToast pending={pendingDelete} onUndo={undoPendingDelete} durationMs={UNDO_WINDOW_MS} />
+        ) : (
+          <StatusToast status={status} onDismiss={() => setStatus(null)} durationMs={STATUS_DURATION_MS} />
+        ))}
     </div>
   )
 }

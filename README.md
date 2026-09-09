@@ -202,6 +202,47 @@ alone while it's pending — otherwise a connection returning mid-undo
 could sync the entry instant before the delete finalizes, deleting a
 now-different (real id) row than the one "Undo" thinks it's holding.
 
+## Consistent action feedback
+
+Every save/create/archive action — new entry, edited entry, renaming a
+project, archiving or restoring one, creating a new project — now
+confirms itself the same way: a brief toast at the bottom (2.5 seconds,
+auto-dismissing), not just a modal quietly closing behind it. It shares
+its exact visual shell with the delete-undo toast above (same position,
+same dark card, same shrinking progress bar) on purpose — one consistent
+"something just happened" language across the app, whether or not
+there's an action to take on it. Only one shows at a time: a delete's
+undo window always wins the spot over a plain confirmation if both would
+apply at once, and neither renders while a modal is open — in both
+cases the confirmation is deferred, not lost, and appears the moment
+the modal closes or the undo window clears.
+
+Not every action got this treatment — two, on purpose, don't: attaching
+or removing a receipt photo, and inviting or removing a collaborator.
+Both happen while their modal stays open, with their own immediate,
+in-context feedback already (the receipt thumbnail itself appearing;
+the collaborator row appearing in the list right there). Tried adding a
+toast to both anyway, for uniformity, and caught two real problems by
+actually attempting it rather than assuming it'd be fine: a toast
+landing on top of a still-open modal visually sits against its own
+content and can cover whatever's below it (here, the collaborators
+list's own Delete-project button as the list grows) — confirmed by
+tapping where a button should be and checking what element the tap
+actually landed on, not by eyeballing a screenshot. Left those two
+actions with their existing feedback rather than force a pattern that
+doesn't fit.
+
+That same investigation surfaced a real, pre-existing bug, unrelated to
+whether an action gets a toast at all: while any toast is showing, it
+sits at z-40 — above absolutely everything, undo toast included, on
+purpose — including the "add entry" button in that same bottom corner,
+which is solid, not translucent, so it wasn't just covered, taps there
+were landing on the toast's own Undo button instead. Fixed two ways:
+the add-entry button shifts up out of the way while a toast with no
+modal open is showing, and neither toast renders at all while any modal
+is open (its underlying timer, for an undo window, keeps running
+regardless — nothing about the delete itself changes).
+
 ## Filtering the entry list
 
 A project's entry list has a search box (matches note or vendor) plus a
@@ -475,6 +516,10 @@ src/
                                      (person icon in the header)
     UndoToast.jsx                    the "Undo" bar after a delete — see
                                       Deleting things above
+    StatusToast.jsx                  the plain auto-dismissing "that
+                                      worked" toast, same shell as
+                                      UndoToast — see Consistent action
+                                      feedback above
 public/
   icon.svg, icon-192.png, icon-512.png   app icons (used by the PWA manifest)
 netlify/functions/
