@@ -117,6 +117,28 @@ after that, a viewer-collaborator still seeing it but correctly denied
 edit, an unrelated third user still seeing nothing at all, and the
 project's data surviving an archive→restore round trip intact.
 
+## First-run experience
+
+Zero projects means one of two different things, and they get different
+copy. A true first-time visitor sees a brief explanation of what the app
+actually does (track income/expenses per construction project, what's
+still outstanding, works with no signal on-site) above the "Νέο έργο"
+button — not a multi-screen tour, just a few sentences once. A returning
+user who happens to have zero projects right now (deleted their only
+one — having every project archived is a different, separate message,
+see Archiving above) just gets a short "you don't have a project right
+now" prompt instead, since they already know what the app is.
+
+Telling those apart needs a signal that survives past the moment
+projects hits zero, since by then both cases look identical. That's a
+one-way, per-user flag in localStorage (`lib/onboarding.js`, same
+pattern as the offline outbox) — set the first time we ever see this
+user with at least one project, on initial load or right after they
+create their first one. It's per-browser, not tied to the account
+server-side, which is a real limitation (a different device won't know)
+— an accepted trade for staying this lightweight; getting it wrong
+either way only costs a few lines of text, never a functional problem.
+
 ## Outdoor readability
 
 Amounts and category/status badges use darker text than Tailwind's
@@ -386,6 +408,9 @@ src/
                                   (see EntryFilterBar.jsx above), kept
                                   separate so that component stays a
                                   component (Fast Refresh needs that)
+  lib/onboarding.js               the "has this user ever had a project"
+                                   flag behind the first-run message (see
+                                   First-run experience above)
   components/
     AuthGate.jsx                shows LoginScreen or the app, based on
                                  whether there's a signed-in session
@@ -394,7 +419,9 @@ src/
                                   "Συνεργασία" badge on shared projects
     EmptyState.jsx                "no project yet" screen (zero projects
                                    at all — different from the overview
-                                   below, which needs at least one)
+                                   below, which needs at least one) —
+                                   true-first-run vs. returning-but-empty
+                                   copy, see First-run experience above
     ProjectsOverview.jsx           home screen — a card per project,
                                     tap one to open it; link to the
                                     archived section when any exist

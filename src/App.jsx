@@ -16,6 +16,7 @@ import AccountModal from './components/AccountModal'
 import UndoToast from './components/UndoToast'
 import * as storage from './lib/storage'
 import * as outbox from './lib/outbox'
+import * as onboarding from './lib/onboarding'
 import { entriesToCsv, slugifyFilename, downloadCsv } from './lib/csv'
 
 // How long a delete stays undoable before it's actually sent to the
@@ -197,6 +198,7 @@ export default function App({ session, onSignOut }) {
         const list = attachRoles(rawProjects, myCollaborations, session.user.id)
         setProjects(list)
         setSummaries(projectSummaries)
+        if (list.length > 0) onboarding.markHasHadProject(session.user.id)
         // Land on the overview whenever there's anything to show on it —
         // no auto-picking a "first" project and fetching its entries
         // before the user has actually chosen to look at it.
@@ -251,6 +253,7 @@ export default function App({ session, onSignOut }) {
   async function createProject({ name, location }) {
     const project = await storage.addProject({ name, location })
     setProjects((list) => [{ ...project, role: 'owner' }, ...list])
+    onboarding.markHasHadProject(session.user.id)
     await switchProject(project.id)
   }
 
@@ -546,7 +549,10 @@ export default function App({ session, onSignOut }) {
       />
 
       {projects.length === 0 ? (
-        <EmptyState onNewProject={() => setShowNewProject(true)} />
+        <EmptyState
+          isFirstRun={!onboarding.hasEverHadProject(session.user.id)}
+          onNewProject={() => setShowNewProject(true)}
+        />
       ) : showArchived ? (
         <ArchivedProjects
           projects={archivedProjects}
