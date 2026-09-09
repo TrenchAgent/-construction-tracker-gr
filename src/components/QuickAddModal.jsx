@@ -1,14 +1,20 @@
 import { useState } from 'react'
-import { X, Camera, Trash2 } from 'lucide-react'
+import { X, Camera, Trash2, ArrowDownCircle, ArrowUpCircle } from 'lucide-react'
 import {
   EXPENSE_CATEGORIES,
   VAT_RATE,
+  CATEGORY_ICONS,
+  CATEGORY_SELECTED_STYLES,
   PAYMENT_STATUSES,
   PAYMENT_STATUS_LABELS,
+  PAYMENT_STATUS_ICONS,
+  PAYMENT_STATUS_SELECTED_STYLES,
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
+  PAYMENT_METHOD_ICONS,
 } from '../constants'
 import ReceiptThumbnail from './ReceiptThumbnail'
+import OptionPill from './OptionPill'
 
 // defaultCategory/defaultVendor: whatever was last used in this project
 // (see App.jsx) — saves re-picking the same category and re-typing the
@@ -191,28 +197,22 @@ export default function QuickAddModal({
         </div>
 
         <div className="grid grid-cols-2 gap-2 mb-3">
-          <button
+          <OptionPill
+            selected={form.kind === 'expense'}
+            selectedClassName="bg-rose-800"
             onClick={() => update({ kind: 'expense' })}
-            className={
-              'py-2 rounded-lg text-sm font-medium border ' +
-              (form.kind === 'expense'
-                ? 'bg-rose-600 text-white border-rose-600'
-                : 'border-stone-300 text-stone-600')
-            }
-          >
-            Έξοδο
-          </button>
-          <button
+            Icon={ArrowDownCircle}
+            label="Έξοδο"
+            iconSize={20}
+          />
+          <OptionPill
+            selected={form.kind === 'income'}
+            selectedClassName="bg-emerald-800"
             onClick={() => update({ kind: 'income' })}
-            className={
-              'py-2 rounded-lg text-sm font-medium border ' +
-              (form.kind === 'income'
-                ? 'bg-emerald-700 text-white border-emerald-700'
-                : 'border-stone-300 text-stone-600')
-            }
-          >
-            Είσπραξη
-          </button>
+            Icon={ArrowUpCircle}
+            label="Είσπραξη"
+            iconSize={20}
+          />
         </div>
 
         {form.kind === 'expense' && (
@@ -220,18 +220,14 @@ export default function QuickAddModal({
             <label className="block text-xs text-stone-500 mb-1">Κατηγορία</label>
             <div className="grid grid-cols-3 gap-2 mb-3">
               {EXPENSE_CATEGORIES.map((cat) => (
-                <button
+                <OptionPill
                   key={cat}
+                  selected={form.category === cat}
+                  selectedClassName={CATEGORY_SELECTED_STYLES[cat]}
                   onClick={() => update({ category: cat })}
-                  className={
-                    'py-1.5 rounded-lg text-xs font-medium border ' +
-                    (form.category === cat
-                      ? 'border-rust-700 text-rust-800 bg-rust-50'
-                      : 'border-stone-300 text-stone-600')
-                  }
-                >
-                  {cat}
-                </button>
+                  Icon={CATEGORY_ICONS[cat]}
+                  label={cat}
+                />
               ))}
             </div>
           </>
@@ -299,36 +295,30 @@ export default function QuickAddModal({
         <label className="block text-xs text-stone-500 mb-1">Κατάσταση πληρωμής</label>
         <div className="grid grid-cols-3 gap-2 mb-4">
           {PAYMENT_STATUSES.map((status) => (
-            <button
+            <OptionPill
               key={status}
+              selected={form.paymentStatus === status}
+              selectedClassName={PAYMENT_STATUS_SELECTED_STYLES[status]}
               onClick={() => update({ paymentStatus: status })}
-              className={
-                'py-1.5 rounded-lg text-xs font-medium border ' +
-                (form.paymentStatus === status
-                  ? 'border-rust-700 text-rust-800 bg-rust-50'
-                  : 'border-stone-300 text-stone-600')
-              }
-            >
-              {PAYMENT_STATUS_LABELS[status]}
-            </button>
+              Icon={PAYMENT_STATUS_ICONS[status]}
+              label={PAYMENT_STATUS_LABELS[status]}
+              iconSize={16}
+            />
           ))}
         </div>
 
         <label className="block text-xs text-stone-500 mb-1">Τρόπος πληρωμής (προαιρετικό)</label>
         <div className="grid grid-cols-4 gap-1.5 mb-4">
           {PAYMENT_METHODS.map((method) => (
-            <button
+            <OptionPill
               key={method}
+              selected={form.paymentMethod === method}
+              selectedClassName="bg-rust-700"
               onClick={() => update({ paymentMethod: form.paymentMethod === method ? '' : method })}
-              className={
-                'py-1.5 rounded-lg text-[11px] font-medium border ' +
-                (form.paymentMethod === method
-                  ? 'border-rust-700 text-rust-800 bg-rust-50'
-                  : 'border-stone-300 text-stone-600')
-              }
-            >
-              {PAYMENT_METHOD_LABELS[method]}
-            </button>
+              Icon={PAYMENT_METHOD_ICONS[method]}
+              label={PAYMENT_METHOD_LABELS[method]}
+              iconSize={16}
+            />
           ))}
         </div>
 

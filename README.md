@@ -517,6 +517,42 @@ Every one of them clears 7:1. Two labels (`amber-700`, one case of
 `amber-800`) needed bumping a step darker to actually clear it —
 caught by the measurement, not before it.
 
+## Selectable options (kind, category, payment status, method, role)
+
+Every pill/toggle in the app — Έξοδο/Είσπραξη, the category picker,
+payment status, payment method, the collaborator role picker — used to
+be a plain bordered rectangle with a border-color change on selection.
+They're all built on one shared component now (`OptionPill.jsx`): icon
+above label, comfortable padding, and a real filled background on
+selection instead of just a border swap. Unselected stays a plain
+neutral fill on purpose — the point is for the selected option to
+visibly pop against uniform siblings, not for every option to carry
+its own color all the time, which would compete with "scannable at a
+glance" rather than support it.
+
+Category and payment-status icons/colors aren't a new, separate color
+system: they reuse the exact hues `CATEGORY_BADGE_STYLES` and
+`PAYMENT_STATUS_BADGE_STYLES` already used for badges elsewhere (see
+`constants.js`) — picking "Υλικά" here and seeing its amber badge on
+the entry right after is the same color on purpose, not a coincidence.
+Payment method and the collaborator role have no such pre-existing
+color of their own, so their selected state uses the app's primary
+rust accent instead of inventing a fourth unrelated hue. One
+deliberate icon choice: labor's category icon is a Hammer, not the
+obvious HardHat — that's already the app's own logo everywhere else,
+and reusing it here would read as "this is the app," not "this entry
+is labor."
+
+Every selected fill was checked against the same 7:1 (AAA) bar as
+everything else read outdoors — a first pass had two categories'
+colors (a rose and an amber) land at 5–6:1, comfortably WCAG AA but
+short of this app's own bar, caught by measuring each option's
+contrast the instant it becomes selected (not, as a first version of
+the check did, after clicking through several options and only
+checking at the end — that measures whichever one you last clicked
+away from, not the one you meant to). Darkened one step each
+(`-700` → `-800`) and re-measured clean.
+
 ## Project structure
 
 ```
@@ -578,6 +614,10 @@ src/
     QuickAddModal.jsx              "add entry" bottom sheet — also handles
                                     editing an existing entry and
                                     attaching/removing its receipt photo
+    OptionPill.jsx                  shared filled icon+label pill for
+                                     every picker (kind, category,
+                                     status, method, collaborator role)
+                                     — see Selectable options above
     ReceiptThumbnail.jsx            small clickable receipt photo →
                                      full-size lightbox on tap. Used by
                                      both EntryList.jsx and QuickAddModal.jsx

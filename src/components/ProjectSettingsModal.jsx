@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { X, Archive, ArchiveRestore, FileDown, Trash2, UserPlus } from 'lucide-react'
-import { COLLABORATOR_ROLES, COLLABORATOR_ROLE_LABELS } from '../constants'
+import { COLLABORATOR_ROLES, COLLABORATOR_ROLE_LABELS, COLLABORATOR_ROLE_ICONS } from '../constants'
+import OptionPill from './OptionPill'
 
 function CollaboratorsSection({ onLoadCollaborators, onInvite, onRemove }) {
   const [collaborators, setCollaborators] = useState(null) // null = loading
@@ -99,18 +100,15 @@ function CollaboratorsSection({ onLoadCollaborators, onInvite, onRemove }) {
       />
       <div className="grid grid-cols-2 gap-2 mb-2">
         {COLLABORATOR_ROLES.map((r) => (
-          <button
+          <OptionPill
             key={r}
+            selected={role === r}
+            selectedClassName="bg-rust-700"
             onClick={() => setRole(r)}
-            className={
-              'py-1.5 rounded-lg text-xs font-medium border ' +
-              (role === r
-                ? 'border-rust-700 text-rust-800 bg-rust-50'
-                : 'border-stone-300 text-stone-600')
-            }
-          >
-            {COLLABORATOR_ROLE_LABELS[r]}
-          </button>
+            Icon={COLLABORATOR_ROLE_ICONS[r]}
+            label={COLLABORATOR_ROLE_LABELS[r]}
+            iconSize={16}
+          />
         ))}
       </div>
       {error && <div className="text-xs text-rose-600 mb-2">{error}</div>}
