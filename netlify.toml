@@ -13,3 +13,35 @@
   from = "/landing"
   to = "/landing.html"
   status = 200
+
+# Response headers applied to every path Netlify serves — the app, the
+# landing page, and the two functions alike. Worked out from what this
+# app actually calls, not copied from a generic template:
+#
+# - script-src/style-src/img-src/font-src/connect-src are all 'self' plus
+#   the one real external host this app talks to (Supabase, both its REST
+#   API and signed storage URLs for receipt photos — see
+#   src/lib/supabaseClient.js and getReceiptUrl in src/lib/storage.js).
+#   Stripe Checkout is never embedded (create-checkout-session.js returns
+#   a URL the browser is redirected to, a full page navigation, not an
+#   iframe or a fetch target), so Stripe needs no entry here at all.
+# - style-src needs 'unsafe-inline': this app (and public/landing.html)
+#   both use plain inline style="" attributes in a few spots (e.g.
+#   ReceiptThumbnail.jsx sizing its thumbnail), which a strict style-src
+#   blocks same as a <script> it doesn't recognize. Rewriting every one of
+#   those to a class was out of scope for this pass — inline CSS is a much
+#   lower-severity thing to allow than inline/arbitrary JS, which stays
+#   fully blocked (script-src has no 'unsafe-inline' — the production
+#   build's own service-worker registration is already an external file,
+#   not an inline <script>, so nothing here needed it anyway).
+# - No wildcard "*" anywhere in this policy — every source is either
+#   'self' or that one specific external host.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.supabase.co; font-src 'self'; connect-src 'self' https://*.supabase.co; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=(self)"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"

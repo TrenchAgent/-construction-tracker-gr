@@ -641,6 +641,163 @@ Two real bugs came out of verifying this, not just eyeballing it:
   in the app at the real font/weight/size and setting a width that
   forces a guaranteed two-line wrap, then re-verified there's no overlap.
 
+## Security audit
+
+A full pass against a checklist covering rate limiting, access control,
+password/API-key handling, dependencies, form input, XSS, debug mode,
+env vars, exposed files, admin/API endpoint protection, CORS, security
+headers, and database access. Checked each one against this app's actual
+code rather than assuming a generic answer — several items below don't
+apply the way they would to a typical app, because of choices already
+made earlier (Supabase Auth, Row Level Security, no server of this app's
+own beyond two small functions). Two real, fixed issues came out of it;
+everything else was either already correct (with the reason why) or is
+an action only doable from a dashboard this app's code can't reach.
+
+**Fixed:**
+
+- **CSV export (formula injection).** `entriesToCsv` (`src/lib/csv.js`)
+  escaped the delimiter, quotes, and newlines, but not a field that
+  *starts with* `=`, `+`, `-`, or `@` — which Excel/LibreOffice/Google
+  Sheets read as a live formula, not text. A vendor name or note typed
+  as `=cmd|'/c calc'!A1` would come back out of the export as an
+  executable formula the moment anyone opened it (CSV/formula injection,
+  a known category of real-world attack — this is exactly how it works).
+  Fixed by prefixing any such field with a plain apostrophe, the standard
+  fix every one of those programs already understands as "this is text."
+  Verified with the actual payloads above plus normal Greek text through
+  the real function, not just read — all come out correct.
+- **Security headers, including a real Content-Security-Policy.** None
+  were set at all before this pass — added in `netlify.toml`, applied to
+  everything Netlify serves: CSP, `X-Frame-Options: DENY` (clickjacking),
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy`, a `Permissions-Policy`
+  that turns off geolocation/microphone this app never uses, and HSTS.
+  The CSP is worked out from what this app actually calls — itself, plus
+  Supabase (`*.supabase.co`, both its API and the signed URLs receipt
+  photos load from) — not a copy-pasted generic policy; no `*` wildcard
+  anywhere in it. **Verified against a real served build in headless
+  Chromium** (same standard as the rest of this project): built the app,
+  served `dist/` with these exact headers, loaded the real login screen,
+  submitted the real sign-in form (which fires the app's actual Supabase
+  request), and watched the console — zero CSP violations; fonts,
+  Tailwind's compiled styles, and the PWA's service worker all still
+  loaded and ran. One known trade-off, not hidden: `style-src` needed
+  `'unsafe-inline'` because a few spots (e.g. `ReceiptThumbnail.jsx`
+  sizing its thumbnail) use a plain inline `style=""` attribute — a
+  strict CSP blocks that the same as an unrecognized `<script>`.
+  Rewriting every one of those to a class was out of scope for this
+  pass; `script-src` has no such exception and stays fully locked to
+  `'self'` — the actually dangerous half of what CSP defends against.
+- **Collaborator email matching (defense in depth).** The RLS policy
+  that lets an invited collaborator see their own invite compares
+  `lower(auth.email())` to the stored email — which only works if the
+  stored value is already lowercase. The app's own insert path already
+  lowercases it (`src/lib/storage.js`), so this wasn't failing in
+  practice, but the database itself didn't require it — a future
+  direct insert (bypassing the app's own UI) with a mixed-case email
+  would have silently gone invisible to the very person it was meant to
+  share access with. Added a `check (email = lower(email))` constraint
+  in `supabase/schema.sql` so the database enforces its own assumption
+  instead of trusting every future caller to remember it. **This one
+  needs a manual step from you**: like every `schema.sql` change, it
+  only takes effect once you re-run the file in the Supabase SQL Editor
+  — see "Setting up Supabase" above, step 3 (safe to re-run any time).
+- **Login screen: a resend cooldown.** Added a 30-second cooldown and an
+  actual "Αποστολή ξανά" (resend) control — there wasn't one before, so
+  a mistyped email had no way back except reloading the page. This is a
+  courtesy on the client, not the real control: it's a plain timer,
+  trivially bypassed from devtools. The real rate limit on how many
+  sign-in emails an address can be sent lives in Supabase itself —
+  dashboard → **Authentication → Rate Limits** — worth a look if you
+  haven't checked it.
+- **Dependencies updated**, within their existing version ranges (no
+  major-version jumps bundled into a security pass — those need their
+  own testing, not a drive-by): `@supabase/supabase-js`, `lucide-react`,
+  `stripe`, `oxlint`, `tailwindcss`. `npm audit` found **0 known
+  vulnerabilities both before and after** — this was a hygiene update,
+  not a CVE fix. One deliberate exception: `react`/`react-dom` 19.3.0 is
+  available and in-range, but measured (clean before/after production
+  builds, not guessed) at **+9 kB gzipped** over 19.2.8 for a PWA that
+  has cared about its precached bundle size through every one of the
+  five redesign parts above — for zero feature this app uses. Pinned
+  both at `19.2.8` rather than taking that for free. `vite` (7→8) and
+  `@vitejs/plugin-react` (5→6) are both a major version behind and
+  intentionally untouched here for the same "not in a security pass"
+  reason.
+
+**Checked, already correct — with why:**
+
+- **Passwords.** There are none to hash — sign-in is Supabase's
+  passwordless email link (see "Data lives in Supabase now" above).
+  Nothing in this app ever sees, stores, or checks a password.
+- **API keys / secrets.** The Supabase `anon` key is meant to be public
+  (that's what Row Level Security is for) and is the only credential
+  the browser ever receives. The Stripe secret key and Supabase
+  `service_role` key live only in Netlify's server-side function
+  environment (`netlify/functions/lib/`), never in a `VITE_`-prefixed
+  variable (which Vite bundles straight into the client JS) — confirmed
+  by reading exactly how each is referenced, not assumed from the
+  variable name. Scanned every tracked file *and* this repo's entire
+  git history for committed key patterns (`sk_live_`, `sk_test_`,
+  `service_role` JWTs, etc.) — nothing found. One thing only you can
+  verify, since it lives in Netlify's dashboard, not this repo: that
+  `SUPABASE_SERVICE_ROLE_KEY` / `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`
+  are set as plain env vars there, **not** prefixed with `VITE_`.
+- **Authentication and per-user access control.** Every table has Row
+  Level Security enabled, and — this is the part that actually matters
+  — the policies were written and already tested to key off the
+  database's own `auth.uid()`/`auth.email()`, not anything the client
+  sends (see "Sharing a project" above for the collaborator-role
+  design). A user's own JavaScript, browser devtools, or a hand-crafted
+  request can't see or change data RLS doesn't already allow — that's
+  the actual trust boundary, confirmed by re-reading every policy in
+  `supabase/schema.sql` line by line during this pass, not re-explained
+  from memory.
+- **"Admin routes."** There isn't a separate admin panel or route to
+  protect — the closest equivalent is project-owner-only actions
+  (rename/delete a project, manage collaborators), and those are
+  enforced the same way as everything else: by RLS at the database, not
+  by which buttons the UI happens to show. Confirmed by reading the
+  `"owner manages collaborators"` and owner-only policies directly, not
+  inferred from the client-side `isOwner` checks (which exist too, but
+  only for a good UI — not the actual security boundary).
+- **API endpoints.** The two Netlify functions were re-read end to end:
+  `create-checkout-session.js` requires a real, verified Supabase
+  session token before doing anything; `stripe-webhook.js` verifies
+  Stripe's cryptographic signature on every request and rejects
+  anything that doesn't match — the correct control for "how do I know
+  this request really came from Stripe," which rate limiting wouldn't
+  add anything to. Neither reads anything attacker-controlled into a
+  database query or shell call.
+- **CORS.** Neither function sets any CORS headers, which means the
+  secure default applies: only this app's own origin can call them from
+  a browser. No wildcard `Access-Control-Allow-Origin` anywhere.
+- **XSS.** Grepped the whole app for `dangerouslySetInnerHTML`,
+  `innerHTML`, and `eval`/`new Function` — none exist. Every piece of
+  user-entered text (notes, vendor names, project names) only ever
+  reaches the screen through plain React JSX (`{value}`), which escapes
+  it automatically; there's no path where user text becomes real HTML
+  or executable script.
+- **Debug mode.** No `console.log` of any request/response data anywhere
+  in the app; the only logging at all is `console.error` in the two
+  Netlify functions (server-side only, visible in Netlify's own function
+  logs, never sent to a browser). No debug flag, no sourcemaps shipped
+  in the production build.
+- **Exposed files.** Checked `public/` (just the app icons and the
+  static landing page — nothing sensitive), confirmed `.env*` has never
+  once been committed in this repo's history, and confirmed no stray
+  key/credential files sit anywhere in the working tree.
+- **SQL injection / DB access.** Every database call goes through
+  Supabase's own query builder (parameterized under the hood) — grepped
+  the entire `lib/storage.js` for any place a query gets built by
+  string-concatenating user input, and found none. The one place a
+  storage *path* is built from user input (a receipt photo's file
+  extension) is regex-validated to alphanumeric-only first, so it can't
+  be used for path traversal either.
+- **Unused packages.** Checked every production dependency against
+  actual imports in the code — all seven are genuinely used, nothing to
+  remove.
+
 ## Project structure
 
 ```

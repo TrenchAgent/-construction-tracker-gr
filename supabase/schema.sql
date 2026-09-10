@@ -83,6 +83,18 @@ create table if not exists project_collaborators (
 create index if not exists project_collaborators_project_id_idx on project_collaborators (project_id);
 create index if not exists project_collaborators_email_idx on project_collaborators (email);
 
+-- The RLS policies below match a collaborator's own row by comparing
+-- lower(auth.email()) to this column — so this column has to actually BE
+-- lowercase for that match to ever succeed. The app's own insert path
+-- (storage.js's inviteCollaborator) already lowercases before writing, so
+-- this constraint never rejects anything that goes through the app today —
+-- but the app's JavaScript isn't the trust boundary here (same reasoning
+-- as the comment at the top of this file), so this makes the invariant
+-- the database's own, not something every future writer has to remember.
+alter table project_collaborators drop constraint if exists project_collaborators_email_lowercase;
+alter table project_collaborators add constraint project_collaborators_email_lowercase
+  check (email = lower(email));
+
 -- Row Level Security: without this, the tables are only as private as the
 -- app's own code makes them — with it, the database refuses any query that
 -- isn't scoped to the requesting user, no matter what the client asks for.

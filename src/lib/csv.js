@@ -15,8 +15,24 @@ const DELIMITER = ';'
 
 const KIND_LABELS = { expense: 'Έξοδο', income: 'Είσπραξη' }
 
+// Excel/LibreOffice/Google Sheets treat a cell starting with =, +, -, or @
+// as a formula, not text — so a vendor name or note like
+// `=cmd|'/c calc'!A1` would come back out of this export as a live,
+// executable formula the moment someone opens it, not as the plain text
+// they typed (CSV/formula injection, CWE-1236). vendor and note are the
+// two free-text fields here; category/kind/date are all app-controlled,
+// but there's no real cost to guarding every field the same way.
+// Prefixing with a plain apostrophe is the standard fix — every one of
+// those programs already renders a leading apostrophe as "this cell is
+// text" and drops it from what's displayed, so real vendor names/notes
+// that happen to start with one of these characters aren't affected.
+const FORMULA_TRIGGER_CHARS = ['=', '+', '-', '@', '\t', '\r']
+
 function escapeField(value) {
-  const str = String(value ?? '')
+  let str = String(value ?? '')
+  if (FORMULA_TRIGGER_CHARS.some((ch) => str.startsWith(ch))) {
+    str = "'" + str
+  }
   if (str.includes(DELIMITER) || str.includes('"') || str.includes('\n') || str.includes('\r')) {
     return '"' + str.replace(/"/g, '""') + '"'
   }
