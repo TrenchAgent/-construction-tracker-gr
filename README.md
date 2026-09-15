@@ -31,15 +31,31 @@ instead of the installed app, leaving the installed app itself still
 signed out. If that happens, sign in once directly in Safari at the live
 URL — Android and desktop aren't affected.
 
-Sign-in emails are sent via [Resend](https://resend.com) (custom SMTP
-connected to Supabase — see **Authentication → Emails** in the Supabase
-dashboard for that config), not Supabase's own default sender: the
-built-in one is capped at a very low rate limit meant only for quick
-testing, which is worth knowing if sign-in suddenly starts failing with
-"email rate limit exceeded" — that means something's reverted to it.
-Since the sending address (`onboarding@resend.dev`) isn't a verified
-domain, first-time emails can land in spam — mark them "not spam" once
-and it settles down.
+**Sign-in emails currently go through Supabase's own built-in sender —
+temporarily, and with real limits (see below).** This app was originally
+set up with [Resend](https://resend.com) as custom SMTP (see
+**Authentication → Emails** in the Supabase dashboard for that config),
+but Resend's *sandbox* mode — the state it's in until a real domain gets
+verified — only delivers to the account's own signup address, refusing
+everything else. That's invisible with just one person testing, but it
+means **nobody else could ever have signed in**: every other email would
+have silently failed. Custom SMTP was switched off to unblock that,
+which falls back to Supabase's own sender — worth knowing if you're
+deciding whether to turn Resend back on:
+
+- **Low send rate.** Supabase's built-in sender is meant for light testing,
+  not real traffic — it's the thing to suspect first if sign-in starts
+  failing with "email rate limit exceeded."
+- **Higher chance of landing in spam.** It's a shared, generic sender
+  (not a domain that's earned any reputation with your specific users'
+  mail providers), so first sign-ins are more likely to need a "not spam"
+  click than a properly configured sender would.
+
+**The real fix, still deferred, is verifying a real domain in Resend**
+(see **Roadmap notes** below) — that removes both the sandbox
+restriction (delivers to any address, not just the account owner's) and
+this rate/spam tradeoff in one move. Worth prioritizing before more than
+one or two people are expected to sign in.
 
 All the database code lives in one file, `src/lib/storage.js` — components
 never talk to Supabase directly.
@@ -1020,7 +1036,12 @@ locally.
 ## Roadmap notes
 
 - Everything in "deliberately cut for v1" above, only if actually needed.
-- Verifying a real domain in Resend would fix sign-in emails landing in
-  spam and lift the "only delivers to your own signup address" limit on
-  the shared `onboarding@resend.dev` sender — not needed for a single
-  user, worth doing before other people sign in.
+- **Verify a real domain in Resend and turn custom SMTP back on.** This
+  is the one deferred item that's actually bitten: Resend's sandbox mode
+  only delivers to the account's own signup address, which surfaced as
+  sign-in being completely broken for any other email around the time
+  the Supabase project moved to a new account (see "Data lives in
+  Supabase now" above) — not a theoretical gap, a real outage. Supabase's
+  own sender is standing in for now (real limits: low send rate, higher
+  chance of landing in spam — same section). Verifying a domain removes
+  both.
