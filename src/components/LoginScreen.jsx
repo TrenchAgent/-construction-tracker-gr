@@ -13,6 +13,57 @@ import { supabase } from '../lib/supabaseClient'
 // usually disables itself for a few seconds, not as a security boundary.
 const RESEND_COOLDOWN_SECONDS = 30
 
+// Supabase's auth API answers in English (e.g. "email rate limit
+// exceeded") — every other string in this app is Greek, so showing that
+// raw was a real bug, not just unpolished: a Greek-speaking user (or
+// someone they forward the app to) has no way to know what it means or
+// what to do about it. Keyed on error.code (a stable identifier — see
+// node_modules/@supabase/auth-js/dist/module/lib/error-codes.d.ts —
+// rather than error.message, which is just English prose and could
+// change wording without notice). Only the codes this screen can
+// actually hit are covered; anything else falls back to a plain Greek
+// "something went wrong," never the raw English string.
+const AUTH_ERROR_MESSAGES = {
+  // The one that actually happened: the project's whole email-sending
+  // quota (shared across everyone signing in, not per-address) is used
+  // up for now — see the README's "Data lives in Supabase now" section.
+  over_email_send_rate_limit: 'Πάρα πολλές προσπάθειες σύνδεσης προς το παρόν. Περιμένετε λίγο και δοκιμάστε ξανά.',
+  over_request_rate_limit: 'Πάρα πολλές προσπάθειες σύνδεσης προς το παρόν. Περιμένετε λίγο και δοκιμάστε ξανά.',
+  email_address_invalid: 'Αυτό δεν μοιάζει με έγκυρο email. Ελέγξτε το και δοκιμάστε ξανά.',
+  email_provider_disabled: 'Η σύνδεση μέσω email δεν είναι διαθέσιμη αυτή τη στιγμή.',
+  signup_disabled: 'Η σύνδεση μέσω email δεν είναι διαθέσιμη αυτή τη στιγμή.',
+  email_address_not_authorized: 'Αυτό το email δεν έχει πρόσβαση αυτή τη στιγμή.',
+}
+const AUTH_ERROR_FALLBACK = 'Κάτι πήγε στραβά. Δοκιμάστε ξανά σε λίγο.'
+// No response reached the browser at all (offline, a network hiccup, the
+// proxy) — a genuinely different situation from "Supabase answered but
+// said no," worth its own message rather than the generic fallback.
+const AUTH_ERROR_NO_CONNECTION = 'Δεν ήταν δυνατή η σύνδεση με τον διακομιστή. Ελέγξτε τη σύνδεσή σας στο διαδίκτυο και δοκιμάστε ξανά.'
+
+// error.code is only ever set for 4xx responses the SDK recognizes (see
+// AUTH_ERROR_MESSAGES above). For 500-504 (and Cloudflare's 520-530) the
+// SDK deliberately collapses EVERY such response into an
+// AuthRetryableFetchError with code left undefined on purpose (see
+// node_modules/@supabase/auth-js/dist/module/lib/fetch.js) — the exact
+// path the Resend-sandbox failure took here once already (a real 500,
+// "Error sending confirmation email"). That's a server-side failure, not
+// a connectivity one, and confusingly they're otherwise indistinguishable
+// from a true offline/DNS failure at the error-object level: both are
+// "no code." The one thing that does tell them apart is error.status —
+// 0 for a fetch that never got a response at all (thrown as
+// `new AuthRetryableFetchError(message, 0)` when the error doesn't look
+// like a fetch Response — see the same file), a real HTTP number when a
+// response did arrive. Checked this against the actual SDK source rather
+// than assumed, after a local test caught the fallback text saying "check
+// your internet connection" for a case where the server had, in fact,
+// responded — just with a status this screen doesn't have a specific
+// message for yet.
+function describeAuthError(error) {
+  if (error.code) return AUTH_ERROR_MESSAGES[error.code] || AUTH_ERROR_FALLBACK
+  if (!error.status) return AUTH_ERROR_NO_CONNECTION
+  return AUTH_ERROR_FALLBACK
+}
+
 export default function LoginScreen() {
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
@@ -42,7 +93,7 @@ export default function LoginScreen() {
     })
     setBusy(false)
     if (sendError) {
-      setError(sendError.message)
+      setError(describeAuthError(sendError))
       return
     }
     setSent(true)

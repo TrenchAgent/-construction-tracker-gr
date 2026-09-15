@@ -44,18 +44,33 @@ which falls back to Supabase's own sender — worth knowing if you're
 deciding whether to turn Resend back on:
 
 - **Low send rate.** Supabase's built-in sender is meant for light testing,
-  not real traffic — it's the thing to suspect first if sign-in starts
-  failing with "email rate limit exceeded."
+  not real traffic — it's the thing to suspect first if sign-in fails
+  with a message about too many attempts (`LoginScreen.jsx` shows this
+  in Greek now, translated from Supabase's own English error codes —
+  fixed after the raw English string reached a real user during testing).
 - **Higher chance of landing in spam.** It's a shared, generic sender
   (not a domain that's earned any reputation with your specific users'
   mail providers), so first sign-ins are more likely to need a "not spam"
   click than a properly configured sender would.
 
-**The real fix, still deferred, is verifying a real domain in Resend**
-(see **Roadmap notes** below) — that removes both the sandbox
+**The real fix, on hold by choice (see Roadmap notes below), is
+verifying a real domain in Resend** — that removes both the sandbox
 restriction (delivers to any address, not just the account owner's) and
 this rate/spam tradeoff in one move. Worth prioritizing before more than
 one or two people are expected to sign in.
+
+A stopgap that doesn't need a new domain, if the rate limit above keeps
+biting before that happens: point Supabase's custom SMTP at a personal
+Gmail/Yahoo account instead (an app password from that account's own
+security settings, entered directly in the Supabase dashboard — not
+something to hand to anyone else, this app's code included). That
+genuinely fixes the sandbox restriction, since it reuses a domain
+(gmail.com/yahoo.com) that's already verified — but it's not a clean
+win: personal providers' terms don't love automated app traffic on a
+personal account, the sending cap is still built for a person rather
+than an app, and deliverability from a personal inbox suddenly sending
+automated mail can be inconsistent. Fine to bridge a gap, not something
+to lean on long-term.
 
 All the database code lives in one file, `src/lib/storage.js` — components
 never talk to Supabase directly.
@@ -1036,12 +1051,20 @@ locally.
 ## Roadmap notes
 
 - Everything in "deliberately cut for v1" above, only if actually needed.
-- **Verify a real domain in Resend and turn custom SMTP back on.** This
-  is the one deferred item that's actually bitten: Resend's sandbox mode
-  only delivers to the account's own signup address, which surfaced as
-  sign-in being completely broken for any other email around the time
-  the Supabase project moved to a new account (see "Data lives in
-  Supabase now" above) — not a theoretical gap, a real outage. Supabase's
-  own sender is standing in for now (real limits: low send rate, higher
-  chance of landing in spam — same section). Verifying a domain removes
-  both.
+- **Verify a real domain in Resend and turn custom SMTP back on — on
+  hold by explicit choice, not just not-gotten-to-yet.** This is the one
+  deferred item that's actually bitten, twice: Resend's sandbox mode
+  only delivers to the account's own signup address (surfaced as sign-in
+  being completely broken for any other email around the time the
+  Supabase project moved to a new account — see "Data lives in Supabase
+  now" above), and Supabase's own built-in sender standing in for it has
+  its own low, shared quota that's already been hit by real usage
+  (surfaced as "email rate limit exceeded," blocking sign-in for
+  everyone — same underlying limit, not a separate bug each time).
+  Verifying a domain fixes both at once — it's a real, recurring
+  limitation, not a theoretical one — but doing that needs a domain to
+  add DNS records to, and the decision (as of this writing) is not to
+  get one yet. Until that changes, sign-in will keep hitting this
+  ceiling under real usage; there's no code-side workaround for it — see
+  "Data lives in Supabase now" above for what a personal-email SMTP
+  relay would trade off as a stopgap instead.
