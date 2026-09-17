@@ -441,6 +441,10 @@ Environment variables**), none of them safe to put in frontend code:
   subscription rows for the signed-in user directly, bypassing RLS the
   same way Supabase's own dashboard does. Never put this in a frontend
   env var (i.e. nothing prefixed `VITE_`).
+- `SENTRY_DSN` — optional, see **Error monitoring (Sentry)** below. Only
+  `stripe-webhook.js` uses it (not `create-checkout-session.js`, which
+  doesn't have Sentry wired in — see that section for why); the webhook
+  runs fine without this var set at all, just without error reporting.
 
 One outstanding cleanup item: when these four secret-ish values were
 first added in the Netlify dashboard, checking "contains secret values"
@@ -464,6 +468,84 @@ Stripe's own fraud detection — not something worth trying to defeat, even
 in test mode. Do that one manual click-through yourself at some point
 (`4242 4242 4242 4242`, any future expiry, any CVC) as the final sanity
 check of Stripe's side of the flow.
+
+## Error monitoring (Sentry)
+
+Two separate Sentry projects, one org, both on the free tier: one for the
+React frontend, one for `stripe-webhook.js`. Deliberately not
+`create-checkout-session.js` — that one's failures are already visible
+the moment they happen (its caller is a signed-in user clicking
+"upgrade," who immediately sees the request fail), while the webhook
+runs unattended, called by Stripe with nobody watching, so a silent
+failure there is the one that actually needs an alert instead of a
+complaint. Kept genuinely minimal, matching what was asked for: **error
+capture only** — no performance tracing, no session replay, neither
+project has either enabled.
+
+**Both are optional and skipped cleanly if unconfigured** — `VITE_SENTRY_DSN`
+unset means `src/main.jsx` never calls `Sentry.init()` at all; `SENTRY_DSN`
+unset means the same in `netlify/functions/lib/sentry.js`. Neither app
+depends on Sentry actually being reachable to function; this only adds
+visibility into failures, never a new way to fail.
+
+**Real data considerations, not the SDK's defaults left as-is:** Sentry's
+own default data-collection settings (checked directly against
+`@sentry/core`'s actual type definitions, not assumed) send full HTTP
+request/response bodies, cookies, and headers by default — this app's
+requests carry real people's business data (entry amounts, vendor
+names, project names) every time it talks to Supabase, and headers can
+carry the bearer token itself. Both projects explicitly turn all three
+off (`dataCollection: { httpBodies: [], cookies: false, httpHeaders: false }`).
+`userInfo` auto-collection is left off too (its own default); the
+frontend instead sets a deliberate, minimal user context — just
+id + email — via `Sentry.setUser()` in `AuthGate.jsx` whenever the
+signed-in session changes, so an error is attributable to a specific
+account without pulling in whatever else Sentry's automatic collection
+would have grabbed.
+
+**A real bug this caught before it shipped:** this app's Content-Security-
+-Policy (see "Security audit" above) locks `connect-src` down to `'self'`
+plus Supabase only — a strict CSP silently blocks a browser SDK's own
+error reports exactly like it would block anything else it doesn't
+recognize. Caught by checking, not by later wondering why nothing showed
+up in Sentry: `netlify.toml`'s CSP now also allows Sentry's ingest host.
+Both projects' DSNs share one host (same org, EU data region — the
+project id that tells them apart is in the DSN's path, not the host), so
+one entry covers both.
+
+**Frontend specifics** (`src/main.jsx`, `src/components/AuthGate.jsx`):
+wrapped in `Sentry.ErrorBoundary` so a React render crash shows a plain
+Greek "something went wrong, refresh" screen (`CrashFallback.jsx`)
+instead of a blank white page — worse for someone standing on a jobsite
+mid-entry than almost anywhere else this could happen. This is a real,
+measured cost, not a rough guess: **+31 kB gzip** to the production
+bundle (141.95 KB → 173.41 KB) for the SDK plus its React integration
+and automatic breadcrumb collectors (fetch/XHR, console, DOM clicks) —
+checked that no Replay or Tracing code leaked in despite neither being
+used (a stray "Replay" string match in the built bundle turned out to
+be React's own unrelated internal `$$reactFormReplay`, not Sentry's).
+
+**Webhook specifics** (`netlify/functions/lib/sentry.js`,
+`stripe-webhook.js`): both existing catch blocks (signature verification,
+and general webhook processing) now call `Sentry.captureException`,
+tagged `stage` so the two are distinguishable, plus an explicit
+`fingerprint` on the processing-failure path (`['webhook_processing', event.type]`)
+so a checkout-completion failure and a subscription-update failure are
+never silently merged into one issue just because the underlying thrown
+error happens to look identical (e.g. both a generic Supabase network
+timeout, which minifies down to the same couple of stack frames either
+way — Sentry's default stack-trace grouping alone wouldn't tell them
+apart). Both call `await Sentry.flush(2000)` before returning — a
+serverless function can be frozen the instant it returns, and the actual
+send to Sentry is async, so skipping this can silently drop the very
+error you're trying to capture; bounded to 2 seconds so a slow or
+unreachable Sentry can't itself delay Stripe's response.
+
+**Verified against the real, live deployment, not just "the SDK
+initialized without errors":** triggered one genuine error on each side
+after deploying and confirmed both actually landed as Issues in their
+respective Sentry projects' dashboards, not just assumed from clean
+`Sentry.init()` calls.
 
 ## Public landing page
 
@@ -916,6 +998,10 @@ src/
                                       worked" toast, same shell as
                                       UndoToast — see Consistent action
                                       feedback above
+    CrashFallback.jsx                shown in place of a blank white
+                                      screen if a React render crash hits
+                                      Sentry's ErrorBoundary in main.jsx
+                                      — see Error monitoring above
 public/
   icon.svg, icon-192.png, icon-512.png   app icons (used by the PWA manifest)
 netlify/functions/
@@ -927,6 +1013,9 @@ netlify/functions/
                                  unless the key is a test key (see Billing)
   lib/supabaseAdmin.js          server-side Supabase client using the
                                  secret key, for the two functions above
+  lib/sentry.js                  inits the Node Sentry SDK from SENTRY_DSN
+                                  — used by stripe-webhook.js only, see
+                                  Error monitoring above
 supabase/
   schema.sql                  run once in the Supabase SQL Editor — creates
                                the projects/entries/project_collaborators/

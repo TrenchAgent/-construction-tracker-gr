@@ -18,13 +18,22 @@
 # landing page, and the two functions alike. Worked out from what this
 # app actually calls, not copied from a generic template:
 #
-# - script-src/style-src/img-src/font-src/connect-src are all 'self' plus
-#   the one real external host this app talks to (Supabase, both its REST
-#   API and signed storage URLs for receipt photos — see
-#   src/lib/supabaseClient.js and getReceiptUrl in src/lib/storage.js).
-#   Stripe Checkout is never embedded (create-checkout-session.js returns
-#   a URL the browser is redirected to, a full page navigation, not an
-#   iframe or a fetch target), so Stripe needs no entry here at all.
+# - script-src/style-src/img-src/font-src are 'self' only. connect-src is
+#   'self' plus the two external hosts this app actually talks to over
+#   fetch/XHR: Supabase (both its REST API and signed storage URLs for
+#   receipt photos — see src/lib/supabaseClient.js and getReceiptUrl in
+#   src/lib/storage.js) and Sentry's ingest endpoint (src/main.jsx on the
+#   frontend) — found the hard way, not guessed: this policy already
+#   existed before Sentry was added, and a strict connect-src silently
+#   blocks a browser SDK's own error reports right along with anything
+#   else it doesn't recognize, so this needed updating in the same change
+#   that added the SDK, not discovered later as "why is nothing showing
+#   up in Sentry." Both Sentry projects' DSNs share one ingest host (same
+#   org, EU data region — the project id that differs between them is in
+#   the DSN's path, not its host), so one entry covers both. Stripe
+#   Checkout is never embedded (create-checkout-session.js returns a URL
+#   the browser is redirected to, a full page navigation, not an iframe or
+#   a fetch target), so Stripe needs no entry here at all.
 # - style-src needs 'unsafe-inline': this app (and public/landing.html)
 #   both use plain inline style="" attributes in a few spots (e.g.
 #   ReceiptThumbnail.jsx sizing its thumbnail), which a strict style-src
@@ -39,7 +48,7 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.supabase.co; font-src 'self'; connect-src 'self' https://*.supabase.co; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.supabase.co; font-src 'self'; connect-src 'self' https://*.supabase.co https://o4512103277920256.ingest.de.sentry.io; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
