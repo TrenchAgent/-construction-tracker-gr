@@ -17,7 +17,7 @@ export default defineConfig({
       // exactly how a real stale-cache report happened here: the app kept
       // silently running an old bundle indefinitely with no way for the
       // user to notice, until "clear site data" was tried by hand. 'prompt'
-      // instead leaves a new service worker waiting until App.jsx's
+      // instead leaves a new service worker waiting until AuthGate.jsx's
       // useRegisterSW() call explicitly triggers it (see there for the
       // actual detection + banner), so an update is something the user is
       // told about and can act on, not something that happens invisibly
@@ -63,6 +63,20 @@ export default defineConfig({
         // this they'd load fine online but not be available offline like
         // everything else the app needs on a jobsite with no signal.
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // Found by testing the actual reload, not assumed: without this,
+        // self.skipWaiting() (sent by AuthGate.jsx's update button) makes
+        // the new worker activate, but an already-open tab keeps being
+        // controlled by the OLD worker until it navigates on its own —
+        // there's no controllerchange event to react to, so the "click
+        // banner -> reload" half of the flow silently never fires.
+        // clientsClaim() is what makes an activated worker actually take
+        // over open tabs, which is what fires that event. This does NOT
+        // bring back the silent auto-update this file's registerType
+        // deliberately avoids: clientsClaim() only runs once the worker
+        // has already activated, and activation is still fully gated
+        // behind the user's own click (see the message listener that
+        // vite-plugin-pwa injects for SKIP_WAITING — untouched by this).
+        clientsClaim: true,
       },
     }),
   ],
