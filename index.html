@@ -26,7 +26,12 @@
          That diagnostic found the real cause: vite-plugin-pwa's own
          reload logic gates on an isUpdate flag that's stuck false for a
          page whose first-ever session spans a deploy — see AuthGate.jsx
-         for the fix. round 6 marker confirms it against a real deploy.) -->
+         for the fix. round 6 marker confirms it against a real deploy.
+         round 6 result: STILL broken even with that fix live in
+         production (confirmed via the deployed bundle's own source).
+         round 7 marker is for a diagnostic that clicks the real button
+         while instrumenting raw registration state, to see exactly
+         where a real click diverges from a raw postMessage test.) -->
   </head>
   <body>
     <div id="root"></div>
