@@ -13,7 +13,9 @@
          for app updates" (README) against a real second deploy. Safe to
          remove or leave — it's inert either way. (round 2: also
          confirming the click-to-reload path with a properly awaited
-         navigation event, not a guessed timeout.) -->
+         navigation event, not a guessed timeout.) (round 3: rounds 1-2
+         both got an inconclusive single-point-in-time banner check —
+         this round polls repeatedly instead of checking once.) -->
   </head>
   <body>
     <div id="root"></div>
