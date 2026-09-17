@@ -15,7 +15,11 @@
          confirming the click-to-reload path with a properly awaited
          navigation event, not a guessed timeout.) (round 3: rounds 1-2
          both got an inconclusive single-point-in-time banner check —
-         this round polls repeatedly instead of checking once.) -->
+         this round polls repeatedly instead of checking once. round 4
+         found and fixed a real bug this way: clicking never actually
+         reloaded, because the service worker never called
+         clients.claim() — see vite.config.js. This marker exists to
+         confirm the fix against a real deploy of that config change.) -->
   </head>
   <body>
     <div id="root"></div>
