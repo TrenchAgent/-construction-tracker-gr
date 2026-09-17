@@ -1,3 +1,5 @@
+import { PAYMENT_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '../constants'
+
 // CSV export for a project's entries. A few deliberate choices here that
 // aren't obvious from the code alone:
 //
@@ -49,7 +51,18 @@ function formatDateGr(isoDate) {
 }
 
 export function entriesToCsv(entries) {
-  const headers = ['Τύπος', 'Κατηγορία', 'Προμηθευτής', 'Σημείωση', 'Ποσό', 'ΦΠΑ', 'Ημερομηνία']
+  const headers = [
+    'Τύπος',
+    'Κατηγορία',
+    'Προμηθευτής',
+    'Σημείωση',
+    'Ποσό',
+    'ΦΠΑ',
+    'Κατάσταση πληρωμής',
+    'Τρόπος πληρωμής',
+    'Απόδειξη',
+    'Ημερομηνία',
+  ]
   const rows = entries.map((e) => [
     KIND_LABELS[e.kind] || e.kind,
     e.category,
@@ -57,6 +70,17 @@ export function entriesToCsv(entries) {
     e.note,
     formatAmount(e.amount),
     e.vat ? 'Ναι' : 'Όχι',
+    // paymentStatus always has a value (defaults to 'pending' — see
+    // schema.sql) — no fallback-to-empty needed, unlike payment method.
+    PAYMENT_STATUS_LABELS[e.paymentStatus] || e.paymentStatus,
+    // Optional — unlike status, an entry can genuinely have no payment
+    // method recorded (see PAYMENT_METHODS in constants.js), so '' here
+    // means that, not a missing label.
+    (e.paymentMethod && PAYMENT_METHOD_LABELS[e.paymentMethod]) || '',
+    // The image itself never belongs in a CSV — this is Ναι/Όχι, the
+    // same "was one attached" flag EntryList's own receipt thumbnail
+    // already keys off of (a truthy receiptPath), not the receipt.
+    e.receiptPath ? 'Ναι' : 'Όχι',
     formatDateGr(e.date),
   ])
   const lines = [headers, ...rows].map((cols) => cols.map(escapeField).join(DELIMITER))

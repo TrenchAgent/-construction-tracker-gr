@@ -292,7 +292,11 @@ always lets you update it). An optional payment method (Μετρητά /
 **Εκκρεμή ποσά** card totaling everything not yet fully paid (pending +
 partial, across both income and expenses), and a Σήμερα / Αυτή την
 εβδομάδα / Αυτόν τον μήνα breakdown of income and expenses (Monday-start
-week, matching the usual Greek convention).
+week, matching the usual Greek convention). Both the payment status and
+method are included as their own columns in the CSV export (see
+"Receipt photos" below for the third column that joined them there) —
+added after the export itself already existed, since these were both
+real features by the time anyone asked for the export to reflect them.
 
 ## Monthly trend chart
 
@@ -363,6 +367,12 @@ entries themselves (see `supabase/schema.sql`): any project member can
 view a receipt, only the owner or an editor can upload or remove one.
 Capped at 8 MB and image files only (`allowed_mime_types` on the
 bucket), so it can't become a dumping ground for arbitrary large files.
+
+The CSV export's **Απόδειξη** column is a plain Ναι/Όχι flag for whether
+an entry has one attached — the same thing the entry row's own thumbnail
+already keys off of — not the photo itself. A spreadsheet is the wrong
+place for an image; this just answers "is there a receipt to go look
+at" while scanning the exported rows.
 
 Deleting an entry or a project also deletes its receipt file(s) from
 Storage — those aren't reachable by the "on delete cascade" that cleans
