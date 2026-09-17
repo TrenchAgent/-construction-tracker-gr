@@ -9,29 +9,21 @@
     <meta name="description" content="Καταγραφή εσόδων και εξόδων για έργα κατασκευής — απλή διαχείριση έργου." />
     <title>Διαχείριση Έργου</title>
     <!-- pwa-update-verification: a trivial marker, no visible/functional
-         change, used to confirm the update-detection flow in "Checking
-         for app updates" (README) against a real second deploy. Safe to
-         remove or leave — it's inert either way. (round 2: also
-         confirming the click-to-reload path with a properly awaited
-         navigation event, not a guessed timeout.) (round 3: rounds 1-2
-         both got an inconclusive single-point-in-time banner check —
-         this round polls repeatedly instead of checking once. round 4
-         found and fixed a real bug this way: clicking never actually
-         reloaded, because the service worker never called
-         clients.claim() — see vite.config.js. This marker exists to
-         confirm the fix against a real deploy of that config change.
-         round 5: the fix still didn't reload the open tab even on a
-         fast, non-external update — this marker is for a raw, low-level
-         diagnostic of registration state, bypassing the app entirely.
-         That diagnostic found the real cause: vite-plugin-pwa's own
-         reload logic gates on an isUpdate flag that's stuck false for a
-         page whose first-ever session spans a deploy — see AuthGate.jsx
-         for the fix. round 6 marker confirms it against a real deploy.
-         round 6 result: STILL broken even with that fix live in
-         production (confirmed via the deployed bundle's own source).
-         round 7 marker is for a diagnostic that clicks the real button
-         while instrumenting raw registration state, to see exactly
-         where a real click diverges from a raw postMessage test.) -->
+         change, used across several rounds to confirm the update-detection
+         flow in "Checking for app updates" (README) against real deploys.
+         Two real product bugs were found and fixed along the way: the
+         service worker never called clients.claim() (vite.config.js), and
+         vite-plugin-pwa's own reload trigger depends on an isUpdate flag
+         that's stuck false for a page whose first-ever session spans a
+         deploy (AuthGate.jsx works around it directly). Several rounds in
+         between showed "still broken" for a third reason that turned out
+         to be a test-script bug, not a product bug: the test's own
+         page.click('text=Ανανέωση') selector also matches the banner's own
+         sentence text ("...για ανανέωση."), so it was silently clicking
+         the wrong element the entire time. Safe to remove this comment or
+         leave it — it's inert either way. -->
+    <!-- pwa-update-verification: round 8 marker, confirming the fix with
+         the corrected selector. -->
   </head>
   <body>
     <div id="root"></div>
