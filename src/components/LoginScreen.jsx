@@ -15,14 +15,20 @@ const MIN_PASSWORD_LENGTH = 8
 // identifier, not error.message, which is just English prose that could
 // reword itself without notice). These are the codes email+password
 // sign-in/sign-up can actually hit; the old mapping here was keyed on
-// magic-link-specific codes (over_email_send_rate_limit as the headline
-// one) and is gone along with the flow it described.
+// magic-link-specific codes and is gone along with the flow it
+// described — except over_email_send_rate_limit, kept for now: verified
+// live that it can still fire on signup as long as "Confirm email" is
+// on in the Supabase dashboard (signUp still tries to send a
+// confirmation email before a session exists) — see the README for that
+// setting. Once it's off, this code shouldn't come up again from this
+// screen; harmless to leave mapped either way.
 const AUTH_ERROR_MESSAGES = {
   invalid_credentials: 'Λάθος email ή κωδικός.',
   email_address_invalid: 'Αυτό δεν μοιάζει με έγκυρο email. Ελέγξτε το και δοκιμάστε ξανά.',
   weak_password: `Ο κωδικός πρέπει να έχει τουλάχιστον ${MIN_PASSWORD_LENGTH} χαρακτήρες.`,
   user_already_exists: 'Υπάρχει ήδη λογαριασμός με αυτό το email. Δοκιμάστε να συνδεθείτε.',
   email_exists: 'Υπάρχει ήδη λογαριασμός με αυτό το email. Δοκιμάστε να συνδεθείτε.',
+  over_email_send_rate_limit: 'Δεν είναι δυνατή η δημιουργία λογαριασμού αυτή τη στιγμή (όριο αποστολής email). Δοκιμάστε ξανά σε λίγο.',
   signup_disabled: 'Η εγγραφή δεν είναι διαθέσιμη αυτή τη στιγμή.',
   email_provider_disabled: 'Η σύνδεση μέσω email δεν είναι διαθέσιμη αυτή τη στιγμή.',
   // Password auth still shares Supabase's project-wide request-rate
