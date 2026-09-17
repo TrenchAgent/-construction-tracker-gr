@@ -19,7 +19,10 @@
          found and fixed a real bug this way: clicking never actually
          reloaded, because the service worker never called
          clients.claim() — see vite.config.js. This marker exists to
-         confirm the fix against a real deploy of that config change.) -->
+         confirm the fix against a real deploy of that config change.
+         round 5: the fix still didn't reload the open tab even on a
+         fast, non-external update — this marker is for a raw, low-level
+         diagnostic of registration state, bypassing the app entirely.) -->
   </head>
   <body>
     <div id="root"></div>
