@@ -1048,7 +1048,7 @@ locally.
 ## Roadmap notes
 
 - Everything in "deliberately cut for v1" above, only if actually needed.
-- **A password-reset path.** Explicitly not built yet, by choice, not an
+- **A password-reset path.** Explicitly agreed to skip for now, not an
   oversight — see "Data lives in Supabase now" above for the full
   reasoning. Worth revisiting if collaborators grow beyond a handful,
   or whenever email is on steadier footing generally (see the next
