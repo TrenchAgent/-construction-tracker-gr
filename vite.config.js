@@ -9,7 +9,20 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt', not 'autoUpdate': the generated service worker used to
+      // call self.skipWaiting() + clientsClaim() the instant a new deploy
+      // was found, but that only makes a NEW service worker take over —
+      // it does nothing for a tab that's already open, since its JS is
+      // already loaded into memory and isn't re-fetching itself. That's
+      // exactly how a real stale-cache report happened here: the app kept
+      // silently running an old bundle indefinitely with no way for the
+      // user to notice, until "clear site data" was tried by hand. 'prompt'
+      // instead leaves a new service worker waiting until App.jsx's
+      // useRegisterSW() call explicitly triggers it (see there for the
+      // actual detection + banner), so an update is something the user is
+      // told about and can act on, not something that happens invisibly
+      // out from under whatever they're doing.
+      registerType: 'prompt',
       includeAssets: ['icon.svg'],
       manifest: {
         id: '/',

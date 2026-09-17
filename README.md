@@ -964,7 +964,10 @@ src/
                                    MonthlyTrendChart.jsx
   components/
     AuthGate.jsx                shows LoginScreen or the app, based on
-                                 whether there's a signed-in session
+                                 whether there's a signed-in session —
+                                 also the "new version available" update
+                                 banner, see Checking for app updates
+                                 above
     LoginScreen.jsx              email+password sign-in/sign-up, one
                                   screen, toggled by mode — see "Data
                                   lives in Supabase now" above
@@ -1140,6 +1143,45 @@ your browser. Leave the terminal window running; closing it (or pressing
 Open the live site on your phone in Chrome (Android) or Safari (iOS) and
 use "Add to Home Screen" from the browser menu. It'll then open
 full-screen, without browser address bars, like a regular app icon.
+
+## Checking for app updates (PWA)
+
+A real bug, not a hypothetical: someone saw what looked like the old
+sign-in screen days after it had been replaced. Turned out to be a
+stale service-worker cache, not a code regression — "clear site data"
+fixed it instantly — but the underlying cause was real and would have
+kept recurring for anyone who leaves the app open across a deploy.
+
+The previous setup (`registerType: 'autoUpdate'`) sounds like it should
+have prevented exactly this, but checked directly rather than assumed:
+its generated service worker calls `self.skipWaiting()` +
+`clientsClaim()` the instant a new deploy is found, which makes a *new*
+service worker take over — but does nothing for a tab that's already
+open, since its JavaScript is already loaded into memory and isn't
+re-fetching itself just because the service worker underneath it
+changed. The browser also only checks a service worker for updates on
+navigation by default, so a tab left open all day (a real jobsite
+pattern for this app) might never even notice a new deploy exists.
+
+Now `registerType: 'prompt'`: a new service worker installs but
+deliberately sits **waiting**, not activating on its own, until told to.
+`AuthGate.jsx` (not `App.jsx` — see the comment there for why: `App`
+unmounts on sign-out, which would otherwise re-register on every
+sign-out/sign-in cycle) uses vite-plugin-pwa's `useRegisterSW()` to
+watch for one, checks for an update every 20 minutes and again whenever
+the tab regains focus (`visibilitychange`) — not just on navigation —
+and shows a plain top banner ("Νέα έκδοση διαθέσιμη — πατήστε για
+ανανέωση") with a button that tells the waiting worker to take over,
+which reloads the tab onto the new version. Nothing happens silently;
+nothing is lost mid-task without warning.
+
+**Verified against two real, separate production deploys, not
+simulated:** opened a session against a live deploy, pushed a second,
+genuinely different deploy without touching that open session, and
+confirmed it detected the update and showed the banner on its own —
+the specific "already-open session, not just next cold-start" case
+this exists for. Clicking the banner's button correctly reloaded onto
+the new deploy's actual content.
 
 ## Deployment (Netlify)
 
