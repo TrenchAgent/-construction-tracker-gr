@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import * as Sentry from '@sentry/react'
 import { RefreshCw } from 'lucide-react'
@@ -54,11 +54,35 @@ export default function AuthGate({ children }) {
   // is sitting there waiting (registerType: 'prompt' in vite.config.js —
   // it deliberately does NOT take over on its own, see the comment
   // there, which is exactly the gap that let a stale bundle keep serving
-  // silently before this existed). updateServiceWorker() only sends the
-  // waiting worker a skip-waiting message; the actual reload once it
-  // takes control is already handled by a listener the library sets up
-  // internally (checked its source directly rather than assumed) —
-  // nothing else needed here beyond calling it.
+  // silently before this existed).
+  //
+  // Reload is handled by our OWN listener below, not vite-plugin-pwa's
+  // built-in one (onNeedReload is deliberately a no-op) — found by
+  // testing an actual click against production, not assumed: the
+  // library only reloads when the browser's controllerchange event
+  // carries isUpdate: true, and that flag is a one-time snapshot of
+  // "was there already a controller when this page first registered a
+  // service worker" taken at registration time, before any update is
+  // even in play. On a page whose very first session spans a deploy —
+  // exactly the "left the tab open all day" case this feature exists
+  // for — there was no controller yet at that first registration, so
+  // the flag is permanently false and the library silently drops the
+  // reload even though clients.claim() (see vite.config.js) correctly
+  // handed control to the new worker. Reloading ourselves, gated on our
+  // own ref instead of that flag, means it only ever fires from our own
+  // button click — never an unprompted reload right after a first
+  // install — and works regardless of that flag's value.
+  const reloadArmedRef = useRef(false)
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    const onControllerChange = () => {
+      if (reloadArmedRef.current) window.location.reload()
+    }
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange)
+    return () => navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange)
+  }, [])
+
   const {
     needRefresh: [needRefresh],
     updateServiceWorker,
@@ -71,7 +95,13 @@ export default function AuthGate({ children }) {
         if (document.visibilityState === 'visible') checkForUpdate()
       })
     },
+    onNeedReload() {}, // see reloadArmedRef above — we handle the reload ourselves
   })
+
+  const handleUpdateClick = () => {
+    reloadArmedRef.current = true
+    updateServiceWorker()
+  }
 
   let content
   if (session === undefined) {
@@ -92,7 +122,7 @@ export default function AuthGate({ children }) {
         <div className="max-w-md mx-auto bg-rust-50 text-rust-800 text-xs px-4 py-2 border-b border-rust-200 flex items-center gap-1.5">
           <RefreshCw size={13} className="shrink-0" />
           <span className="flex-1">Νέα έκδοση διαθέσιμη — πατήστε για ανανέωση.</span>
-          <button onClick={() => updateServiceWorker()} className="font-semibold shrink-0">
+          <button onClick={handleUpdateClick} className="font-semibold shrink-0">
             Ανανέωση
           </button>
         </div>
