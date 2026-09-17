@@ -542,10 +542,28 @@ error you're trying to capture; bounded to 2 seconds so a slow or
 unreachable Sentry can't itself delay Stripe's response.
 
 **Verified against the real, live deployment, not just "the SDK
-initialized without errors":** triggered one genuine error on each side
-after deploying and confirmed both actually landed as Issues in their
-respective Sentry projects' dashboards, not just assumed from clean
-`Sentry.init()` calls.
+initialized without errors":** triggered one genuine error on each
+side — a real uncaught `TypeError` in the deployed frontend (confirmed
+via network interception that the event actually posted to Sentry's
+ingest endpoint and got a `200` back, not just that the SDK didn't
+throw), and a real request with a deliberately invalid signature sent
+straight to the live webhook function (got back exactly the `400` its
+existing signature-check branch was already designed to return). Both
+showed up as Sentry's own email alerts within seconds — the literal
+behavior this was built for ("find out from an alert instead of from
+them complaining"), not just a dashboard checked after the fact. The
+webhook one's stack trace pointed at real `/var/task/netlify/functions/`
+paths, confirming `Sentry.flush()` genuinely got the event out before
+the function could freeze — the specific failure mode this exists to
+prevent (see above), not just present in the code.
+
+One real gap the frontend alert surfaced, not fixed here: it showed the
+submitting IP address despite every `dataCollection` category above
+being turned off. That's not an SDK setting — Sentry's backend captures
+the connecting IP itself, independent of what the client sends,
+controlled by a project-level "Store IP Address" toggle (Settings →
+Security & Privacy) rather than anything `Sentry.init()` controls.
+Left as the account owner's call, not silently patched over.
 
 ## Public landing page
 
