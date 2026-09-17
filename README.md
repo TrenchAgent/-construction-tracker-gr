@@ -15,62 +15,57 @@ section.
 Data used to live only in the browser (`localStorage`) — fine for trying
 the app on one device, but it didn't sync and could vanish if you cleared
 your browser. It now lives in a real [Supabase](https://supabase.com)
-Postgres database, behind a simple email sign-in, so the same data shows
-up on your phone and your laptop.
+Postgres database, behind email+password sign-in, so the same data shows
+up on your phone and your laptop. See **Setting up Supabase** below to
+create your own free project — this app does not come with one already
+configured.
 
-Because that's a shared database reachable from any browser, it needs to
-know who's asking — that's what the sign-in screen is for. There's still
-no password to remember: type your email, then open the email and tap the
-sign-in link it contains — that brings you back here, signed in. See
-**Setting up Supabase** below to create your own free project — this app
-does not come with one already configured.
+**Email+password, not the emailed-link sign-in this app used to have.**
+That first version was passwordless (type your email, tap a link it
+emailed you) — genuinely nicer when it works, but everything that could
+go wrong with sending that email did, in short order: a custom sender
+([Resend](https://resend.com)) whose *sandbox* mode silently refused to
+deliver to anyone but the account's own signup address (nobody else
+could ever have signed in), and Supabase's own built-in sender standing
+in for it turned out to be capped at **2 emails per hour, project-wide**
+— fixed, not configurable without the custom-SMTP domain this app
+doesn't have yet, and small enough that ordinary testing alone exhausted
+it more than once, locking out everyone (including the account owner)
+for the rest of that hour. Two real incidents from relying on email
+just to sign in, not a theoretical risk. Password sign-in has zero email
+dependency: nothing is ever sent, so none of the above can happen again.
+The trade-off is explicit, not hidden: **there is currently no
+password-reset path.** Forgetting your password means asking whoever
+holds the Supabase project's admin dashboard to set a new one for you
+by hand (**Authentication → Users** → find the account → there's a way
+to set its password directly there, no email involved) — genuinely
+locked out otherwise. Accepted for now, for a single owner plus a
+handful of collaborators; worth revisiting if that grows, once email is
+on steadier footing (a verified sending domain).
 
-One known edge case worth knowing about: if the app is installed to an
-iPhone/iPad home screen, tapping that email link can sometimes open Safari
-instead of the installed app, leaving the installed app itself still
-signed out. If that happens, sign in once directly in Safari at the live
-URL — Android and desktop aren't affected.
+**If you already had an account from the old emailed-link version**,
+it has no password on file at all — confirmed directly against this
+project, not assumed: calling password sign-up with an already-registered
+email is a deliberate silent no-op (Supabase's own anti-enumeration
+behavior, so a signup attempt can't be used to probe whether an email
+is taken), it does **not** retroactively set a password on the existing
+account. The fix is the same one line as above: **Authentication →
+Users** in the Supabase dashboard → find that account → set a password
+on it directly. Do this before relying on a fresh sign-in anywhere — it
+costs nothing and keeps the same account (same `auth.uid()`, so the
+exact same projects), it just isn't automatic.
 
-**Sign-in emails currently go through Supabase's own built-in sender —
-temporarily, and with real limits (see below).** This app was originally
-set up with [Resend](https://resend.com) as custom SMTP (see
-**Authentication → Emails** in the Supabase dashboard for that config),
-but Resend's *sandbox* mode — the state it's in until a real domain gets
-verified — only delivers to the account's own signup address, refusing
-everything else. That's invisible with just one person testing, but it
-means **nobody else could ever have signed in**: every other email would
-have silently failed. Custom SMTP was switched off to unblock that,
-which falls back to Supabase's own sender — worth knowing if you're
-deciding whether to turn Resend back on:
-
-- **Low send rate.** Supabase's built-in sender is meant for light testing,
-  not real traffic — it's the thing to suspect first if sign-in fails
-  with a message about too many attempts (`LoginScreen.jsx` shows this
-  in Greek now, translated from Supabase's own English error codes —
-  fixed after the raw English string reached a real user during testing).
-- **Higher chance of landing in spam.** It's a shared, generic sender
-  (not a domain that's earned any reputation with your specific users'
-  mail providers), so first sign-ins are more likely to need a "not spam"
-  click than a properly configured sender would.
-
-**The real fix, on hold by choice (see Roadmap notes below), is
-verifying a real domain in Resend** — that removes both the sandbox
-restriction (delivers to any address, not just the account owner's) and
-this rate/spam tradeoff in one move. Worth prioritizing before more than
-one or two people are expected to sign in.
-
-A stopgap that doesn't need a new domain, if the rate limit above keeps
-biting before that happens: point Supabase's custom SMTP at a personal
-Gmail/Yahoo account instead (an app password from that account's own
-security settings, entered directly in the Supabase dashboard — not
-something to hand to anyone else, this app's code included). That
-genuinely fixes the sandbox restriction, since it reuses a domain
-(gmail.com/yahoo.com) that's already verified — but it's not a clean
-win: personal providers' terms don't love automated app traffic on a
-personal account, the sending cap is still built for a person rather
-than an app, and deliverability from a personal inbox suddenly sending
-automated mail can be inconsistent. Fine to bridge a gap, not something
-to lean on long-term.
+**One required project setting for this to truly have no email
+dependency: "Confirm email" must be off** (Authentication → Providers →
+Email in the Supabase dashboard, or wherever your dashboard version
+puts that toggle for the Email provider). Confirmed directly, not
+assumed: with it on, `signUp()` still tries to send a confirmation
+email before a session exists — the exact same shared 2/hour limit
+above, on the very first signup after switching to password auth. With
+it off, signing up returns a real session immediately, no email
+anywhere in the path. See **Setting up Supabase** below — this is now
+one of the setup steps for a fresh project, not just a note for this
+one's history.
 
 All the database code lives in one file, `src/lib/storage.js` — components
 never talk to Supabase directly.
@@ -87,7 +82,8 @@ entries, a dashboard with income/expense/profit totals, an
 outstanding-amounts card, a Today/This week/This month breakdown, a
 reverse-chronological entry list, CSV export per project, and inviting a
 collaborator (viewer or editor) to a specific project by email. Sign-in
-is by emailed link, no password.
+is email+password (see "Data lives in Supabase now" above) — no password
+reset yet, that's a deliberate, documented trade-off, not an oversight.
 
 One real limitation in entry editing, not hidden: the database only
 stores the final amount (VAT already applied, if it was on) — not the
@@ -384,10 +380,10 @@ shared document, not "only their own additions"). Neither role can
 rename/delete the project or manage who else has access — that stays
 owner-only.
 
-No separate invite flow: the collaborator just needs to sign in with that
-exact email (case-insensitive) at some point — the existing magic-link
-sign-in *is* the acceptance step, automatically, the next time they load
-the app. This is enforced by the database (Row Level Security), not the
+No separate invite flow: the collaborator just needs an account under
+that exact email (case-insensitive) — signing up with it (see "Data
+lives in Supabase now" above) *is* the acceptance step, automatically,
+the next time they load the app. This is enforced by the database (Row Level Security), not the
 app's JavaScript, and was adversarially tested with three real accounts
 before being considered done: a collaborator genuinely cannot see or
 touch any other project, an editor cannot rename the project or add
@@ -859,7 +855,9 @@ src/
   components/
     AuthGate.jsx                shows LoginScreen or the app, based on
                                  whether there's a signed-in session
-    LoginScreen.jsx              email sign-in form (sends the link)
+    LoginScreen.jsx              email+password sign-in/sign-up, one
+                                  screen, toggled by mode — see "Data
+                                  lives in Supabase now" above
     Header.jsx                   top bar, project switcher, sign-out,
                                   "Συνεργασία" badge on shared projects
     EmptyState.jsx                "no project yet" screen (zero projects
@@ -963,18 +961,17 @@ project** above). Safe to re-run any time `schema.sql` changes — it's
 idempotent, so re-running an old copy or the current one both just
 converge on the same state.
 
-**4. Allow the app's URLs to receive the sign-in link.** In the left
-sidebar: **Authentication → URL Configuration**. Under **Redirect URLs**,
-add both of these (one per line, click **Add URL** for each):
-
-```
-https://unique-douhua-1e8149.netlify.app/**
-http://localhost:5173/**
-```
-
-Click **Save**. Without this, Supabase will refuse to send you back to the
-app after you click the sign-in link (it only redirects to URLs you've
-explicitly allowed — a real security check, not red tape).
+**4. Turn off "Confirm email."** In the left sidebar: **Authentication →
+Providers** (or **Sign In / Providers**, depending on your dashboard
+version) → **Email**. Find **Confirm email** and switch it off, then
+save. Sign-in here is email+password with no confirmation link (see
+"Data lives in Supabase now" above) — with this left on, signing up
+still tries to send a confirmation email before a session exists, which
+means it's still depending on email working just to create an account,
+exactly what password auth was meant to avoid. Confirmed directly
+against this project (a signup attempt failed on the very same
+email-sending rate limit that broke the old flow) before writing this
+step, not assumed from Supabase's docs alone.
 
 **5. Get your API keys.** Left sidebar: **Project Settings → API Keys**.
 You need two values from this page:
@@ -1051,20 +1048,20 @@ locally.
 ## Roadmap notes
 
 - Everything in "deliberately cut for v1" above, only if actually needed.
-- **Verify a real domain in Resend and turn custom SMTP back on — on
-  hold by explicit choice, not just not-gotten-to-yet.** This is the one
-  deferred item that's actually bitten, twice: Resend's sandbox mode
-  only delivers to the account's own signup address (surfaced as sign-in
-  being completely broken for any other email around the time the
-  Supabase project moved to a new account — see "Data lives in Supabase
-  now" above), and Supabase's own built-in sender standing in for it has
-  its own low, shared quota that's already been hit by real usage
-  (surfaced as "email rate limit exceeded," blocking sign-in for
-  everyone — same underlying limit, not a separate bug each time).
-  Verifying a domain fixes both at once — it's a real, recurring
-  limitation, not a theoretical one — but doing that needs a domain to
-  add DNS records to, and the decision (as of this writing) is not to
-  get one yet. Until that changes, sign-in will keep hitting this
-  ceiling under real usage; there's no code-side workaround for it — see
-  "Data lives in Supabase now" above for what a personal-email SMTP
-  relay would trade off as a stopgap instead.
+- **A password-reset path.** Explicitly not built yet, by choice, not an
+  oversight — see "Data lives in Supabase now" above for the full
+  reasoning. Worth revisiting if collaborators grow beyond a handful,
+  or whenever email is on steadier footing generally (see the next
+  point) — building it now would mean depending on email again for the
+  one thing password auth exists to avoid depending on it for.
+- **Verifying a real domain for email**, if this app ever needs to send
+  email again for anything (a password-reset path being the most likely
+  reason) — the account's history with this is worth knowing before
+  picking it back up: Resend's sandbox mode only delivered to the
+  account's own signup address (silently broke sign-in for anyone else,
+  back when sign-in was email-based), and Supabase's own built-in sender
+  is capped at a shared 2 emails/hour project-wide, easily exhausted by
+  ordinary testing alone. Not urgent while nothing in this app sends
+  email at all (true as of the password-auth switch — see above), but
+  the first thing to set up again before anything here starts emailing
+  for real.
