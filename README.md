@@ -1171,17 +1171,48 @@ sign-out/sign-in cycle) uses vite-plugin-pwa's `useRegisterSW()` to
 watch for one, checks for an update every 20 minutes and again whenever
 the tab regains focus (`visibilitychange`) — not just on navigation —
 and shows a plain top banner ("Νέα έκδοση διαθέσιμη — πατήστε για
-ανανέωση") with a button that tells the waiting worker to take over,
-which reloads the tab onto the new version. Nothing happens silently;
-nothing is lost mid-task without warning.
+ανανέωση") with a button that tells the waiting worker to take over.
 
-**Verified against two real, separate production deploys, not
-simulated:** opened a session against a live deploy, pushed a second,
-genuinely different deploy without touching that open session, and
-confirmed it detected the update and showed the banner on its own —
-the specific "already-open session, not just next cold-start" case
-this exists for. Clicking the banner's button correctly reloaded onto
-the new deploy's actual content.
+Two more real bugs surfaced while actually testing the *click*, not
+just the detection — both fixed, neither would have been caught without
+testing the full path end to end:
+
+- The generated service worker never called `clients.claim()`
+  (`vite.config.js`), so an activated worker never actually took
+  control of a tab that was already open — nothing to react to, so no
+  reload ever happened.
+- Even with that fixed, vite-plugin-pwa's own built-in reload trigger
+  only fires when the browser's `isUpdate` flag is `true`, and that
+  flag is a one-time snapshot taken at the page's *first-ever* service
+  worker registration — permanently `false` for a tab whose very first
+  session happens to span a deploy (exactly the "left it open all day"
+  case this feature exists for). `AuthGate.jsx` now reloads from its
+  own `controllerchange` listener, armed only by the banner button's
+  own click, instead of depending on that flag.
+
+Nothing happens silently; nothing is lost mid-task without warning.
+
+**Verified against real production deploys, not simulated — and it
+took several rounds to get a trustworthy answer.** Detection was solid
+from early on: opened a session against a live deploy, pushed a new one
+without touching that open session, and the banner reliably appeared on
+its own on the still-open, non-reloaded tab — the specific case this
+feature exists for. The click-to-reload half reported "still broken"
+for several rounds after that, for two different reasons: first, the
+two real bugs above; then, once both were actually fixed, a bug in the
+*test itself* — `page.click('text=Ανανέωση')` also matches the banner's
+own sentence ("...για ανανέωση."), so the test had been silently
+clicking the wrong element the whole time and reporting false
+failures. A low-level diagnostic (listening directly for
+`controllerchange`/`statechange` on the raw registration, independent
+of the app) is what separated the real bugs from the test bug: it
+proved `clients.claim()` and the browser's own update mechanics worked
+correctly even while the app's own click handler appeared to do
+nothing. Once the selector was fixed (`getByRole('button', ...)`
+instead), a real deploy + a real awaited `load` event confirmed
+clicking the button does trigger an actual navigation onto the new
+deploy's content, with the banner gone afterward — confirmed by both
+log output and before/after screenshots.
 
 ## Deployment (Netlify)
 
