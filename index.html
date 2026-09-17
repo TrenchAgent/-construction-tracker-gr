@@ -22,7 +22,11 @@
          confirm the fix against a real deploy of that config change.
          round 5: the fix still didn't reload the open tab even on a
          fast, non-external update — this marker is for a raw, low-level
-         diagnostic of registration state, bypassing the app entirely.) -->
+         diagnostic of registration state, bypassing the app entirely.
+         That diagnostic found the real cause: vite-plugin-pwa's own
+         reload logic gates on an isUpdate flag that's stuck false for a
+         page whose first-ever session spans a deploy — see AuthGate.jsx
+         for the fix. round 6 marker confirms it against a real deploy.) -->
   </head>
   <body>
     <div id="root"></div>
