@@ -67,6 +67,31 @@
   --color-rust-800: #6e2d1a;
   --color-rust-900: #582515;
   --color-rust-950: #301209;
+
+  /* Elevation system — real shadow tokens instead of flat bordered
+     cards, defined once here so every card/header/modal in the app
+     shares the same depth language instead of one-off inline shadows.
+     Tinted warm-brown (stone-900's rgb, not pure black) rather than a
+     generic gray shadow, so elevation reads as part of this palette
+     instead of a default browser drop-shadow bolted on. Two layers on
+     each — a tight, barely-there "contact" shadow plus a softer, wider
+     "ambient" one — is what makes a shadow read as real depth rather
+     than a flat gray smudge; a single-layer shadow was tried first and
+     looked like the latter.
+     --shadow-card: resting elevation for every white content card.
+     --shadow-header: pushes down only (the header sits above the
+       scrolling content, not amid it) — replaces a bottom border.
+     --shadow-modal: pushes up + wider/darker than a card, since a
+       bottom-sheet modal is meant to feel like it's floating above
+       everything else, including the header. */
+  --shadow-card: 0 1px 2px rgba(28, 25, 23, 0.04), 0 4px 14px rgba(28, 25, 23, 0.07);
+  --shadow-header: 0 1px 2px rgba(28, 25, 23, 0.04), 0 4px 12px rgba(28, 25, 23, 0.07);
+  --shadow-modal: 0 -2px 6px rgba(28, 25, 23, 0.06), 0 -16px 40px rgba(28, 25, 23, 0.18);
+  /* A primary button's own shadow is tinted rust, not stone — it's the
+     one element on screen meant to read as "this is the action," so its
+     shadow should feel like it's cast by that same color, not a neutral
+     one shared with everything else. */
+  --shadow-button: 0 1px 2px rgba(28, 25, 23, 0.05), 0 3px 10px rgba(138, 56, 32, 0.22);
 }
 
 html,
@@ -78,6 +103,65 @@ body,
 body {
   margin: 0;
   font-family: var(--font-sans);
+}
+
+/* Faint architectural-grid texture for the page background — the
+   construction-site-plan identity this app wants, applied as texture,
+   not decoration. Rust at 5% opacity over the stone-50 cream resolves
+   to a barely-there warm hairline, checked by actually rendering it
+   rather than trusting the number alone: strong enough that the
+   background reads as "considered" instead of flat, faint enough that
+   it's not competing with any real content sitting on top of it.
+   32px squares (not 8px) on purpose — a fine grid at this viewport
+   width reads as noise/moiré, not a drafting grid; a wider spacing
+   reads as intentional site-plan modules instead. Lives on the
+   scrolling content's own background (not position:fixed), so it's
+   part of the page — it moves with the content the same way lines on
+   real drafting paper would, rather than sitting as a fixed overlay
+   behind it. */
+.bg-blueprint {
+  background-image:
+    linear-gradient(rgba(138, 56, 32, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(138, 56, 32, 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+@layer components {
+  /* Every filled primary action in the app (a full-width modal CTA, or
+     a compact inline "+ X" button) shares this — one definition means
+     the hover/press states below can't drift out of sync between them
+     the way one-off inline classes eventually do. Sizing/padding/radius
+     still come from Tailwind utilities at the call site, same as every
+     other component in this codebase; this only owns color + elevation
+     + the interaction states, which is the part that actually needs to
+     stay identical everywhere. */
+  .btn-primary {
+    background-color: var(--color-rust-700);
+    color: white;
+    font-weight: 500;
+    box-shadow: var(--shadow-button);
+    transition:
+      background-color 150ms ease,
+      box-shadow 150ms ease,
+      transform 100ms ease;
+  }
+  .btn-primary:hover {
+    background-color: var(--color-rust-800);
+  }
+  /* Pressed state loses its shadow and nudges down 1px — a real button
+     should look like it's actually being pushed in, not just changing
+     color, which is what made every button in the app read as a text
+     link with a background color before this pass. */
+  .btn-primary:active {
+    background-color: var(--color-rust-900);
+    box-shadow: none;
+    transform: translateY(1px);
+  }
+  .btn-primary:disabled {
+    opacity: 0.6;
+    box-shadow: none;
+    transform: none;
+  }
 }
 
 /* Countdown bar on the delete-undo toast — see UndoToast.jsx. */

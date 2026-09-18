@@ -47,7 +47,7 @@ export default function TimeBreakdown({ entries }) {
   })
 
   return (
-    <div className="bg-white border border-stone-200 rounded-xl px-3 divide-y divide-stone-100 mb-5">
+    <div className="bg-white rounded-xl px-3 divide-y divide-stone-100 mb-5 shadow-card">
       <Row label="Σήμερα" entries={today} />
       <Row label="Αυτή την εβδομάδα" entries={thisWeek} />
       <Row label="Αυτόν τον μήνα" entries={thisMonth} />

@@ -60,7 +60,7 @@ export default function MonthlyTrendChart({ entries, projectCreatedAt }) {
   const maxValue = Math.max(1, ...bars.flatMap((b) => [b.income, b.expense]))
 
   return (
-    <div className="bg-white border border-stone-200 rounded-xl p-3 mb-5">
+    <div className="bg-white rounded-xl p-3 mb-5 shadow-card">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-xs font-semibold text-stone-500">Μηνιαία τάση</h3>
         <div className="flex items-center gap-3 text-[10px] text-stone-500">

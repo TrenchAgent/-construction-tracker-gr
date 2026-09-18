@@ -106,7 +106,7 @@ export default function AuthGate({ children }) {
   let content
   if (session === undefined) {
     content = (
-      <div className="max-w-md mx-auto min-h-screen bg-stone-50 flex items-center justify-center text-stone-400 text-sm">
+      <div className="max-w-md mx-auto min-h-screen bg-stone-50 bg-blueprint flex items-center justify-center text-stone-400 text-sm">
         Φόρτωση…
       </div>
     )

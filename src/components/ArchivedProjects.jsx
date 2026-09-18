@@ -27,7 +27,7 @@ export default function ArchivedProjects({ projects, onBack, onSelectProject, on
       ) : (
         <div className="space-y-2">
           {sorted.map((p) => (
-            <div key={p.id} className="bg-white border border-stone-200 rounded-xl p-4">
+            <div key={p.id} className="bg-white rounded-xl p-4 shadow-card">
               <button onClick={() => onSelectProject(p.id)} className="w-full text-left">
                 <div className="font-display font-bold text-lg truncate mb-0.5">{p.name}</div>
                 {p.location && (

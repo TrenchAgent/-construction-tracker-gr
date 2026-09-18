@@ -59,7 +59,7 @@ export default function AccountModal({ email, justCheckedOut, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end justify-center z-20">
-      <div className="bg-white w-full max-w-md rounded-t-2xl p-5">
+      <div className="bg-white w-full max-w-md rounded-t-2xl p-5 shadow-modal">
         <div className="flex items-center mb-4">
           <h3 className="font-display font-bold text-lg">Λογαριασμός</h3>
           <button onClick={onClose} className="ml-auto text-stone-500 p-2.5 -m-2.5">
@@ -144,7 +144,7 @@ function StatusCard({ subscription, busy, error, onUpgrade }) {
       <button
         onClick={onUpgrade}
         disabled={busy}
-        className="w-full bg-rust-700 text-white rounded-xl py-2.5 font-medium text-sm disabled:opacity-60"
+        className="btn-primary w-full rounded-xl py-2.5 text-sm"
       >
         {busy ? 'Μεταφορά…' : 'Ξεκινήστε τη δωρεάν δοκιμή'}
       </button>

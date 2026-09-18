@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { HardHat } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
+import BrandMark from './BrandMark'
 
 // Email+password now, not the old magic-link flow — too much broke
 // around email deliverability (a Resend sandbox that only delivers to
@@ -141,8 +141,8 @@ export default function LoginScreen() {
   }
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-stone-50 flex flex-col items-center justify-center px-6 text-stone-900">
-      <HardHat size={40} strokeWidth={1.75} className="text-rust-700 mb-3" />
+    <div className="max-w-md mx-auto min-h-screen bg-stone-50 bg-blueprint flex flex-col items-center justify-center px-6 text-stone-900">
+      <BrandMark className="w-10 h-10 text-rust-700 mb-3" />
       <h1 className="font-semibold text-lg mb-1">Διαχείριση Έργου</h1>
       <p className="text-sm text-stone-500 mb-6 text-center">
         {isSignup
@@ -150,7 +150,7 @@ export default function LoginScreen() {
           : 'Συνδεθείτε για να βλέπετε τα έργα σας σε κάθε συσκευή.'}
       </p>
 
-      <div className="w-full bg-white border border-stone-200 rounded-xl p-5">
+      <div className="w-full bg-white rounded-xl p-5 shadow-card">
         <label className="block text-xs text-stone-500 mb-1">Email</label>
         <input
           type="email"
@@ -197,7 +197,7 @@ export default function LoginScreen() {
         <button
           onClick={handleSubmit}
           disabled={busy}
-          className="w-full bg-rust-700 text-white rounded-xl py-2.5 font-medium text-sm mt-2 disabled:opacity-60"
+          className="btn-primary w-full rounded-xl py-2.5 text-sm mt-2"
         >
           {busy ? (isSignup ? 'Δημιουργία λογαριασμού…' : 'Σύνδεση…') : isSignup ? 'Εγγραφή' : 'Σύνδεση'}
         </button>

@@ -17,7 +17,7 @@ export default function EmptyState({ isFirstRun, onNewProject }) {
         action={
           <button
             onClick={onNewProject}
-            className="bg-rust-700 text-white px-4 py-2.5 rounded-xl font-medium text-sm inline-flex items-center gap-1.5"
+            className="btn-primary px-4 py-2.5 rounded-xl text-sm inline-flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
             Νέο έργο

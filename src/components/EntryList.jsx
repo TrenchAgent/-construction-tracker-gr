@@ -112,7 +112,7 @@ export default function EntryList({ entries, filtersActive, canEdit, onEdit, onD
         return (
           <div
             key={e.id}
-            className="bg-white border border-stone-200 rounded-xl p-3 flex items-start gap-3"
+            className="bg-white rounded-xl p-3 flex items-start gap-3 shadow-card"
           >
             {e.receiptPath && <ReceiptThumbnail path={e.receiptPath} />}
             {rowCanEdit ? (

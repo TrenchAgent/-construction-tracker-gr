@@ -20,14 +20,14 @@ export default function DashboardSummary({ income, expense, profit, pendingAmoun
   return (
     <>
       <div className="grid grid-cols-2 gap-3 mb-3">
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 shadow-card">
           <div className="text-xs text-emerald-800 mb-1 flex items-center gap-1">
             <ArrowUpCircle size={12} />
             Έσοδα
           </div>
           <div className="font-display font-bold text-xl tabular-nums text-emerald-800">{formatEUR(income)}</div>
         </div>
-        <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 shadow-card">
           <div className="text-xs text-rose-800 mb-1 flex items-center gap-1">
             <ArrowDownCircle size={12} />
             Έξοδα
@@ -41,7 +41,7 @@ export default function DashboardSummary({ income, expense, profit, pendingAmoun
           icon that itself carries the up/down meaning. */}
       <div
         className={
-          'rounded-2xl p-4 border-2 flex items-center gap-3 ' +
+          'rounded-2xl p-4 border-2 shadow-card flex items-center gap-3 ' +
           (pendingAmount > 0 ? 'mb-3' : 'mb-5') +
           ' ' +
           (isProfit ? 'bg-emerald-50 border-emerald-300' : 'bg-rose-50 border-rose-300')
@@ -70,7 +70,7 @@ export default function DashboardSummary({ income, expense, profit, pendingAmoun
       </div>
 
       {pendingAmount > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5 flex items-center gap-2">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5 flex items-center gap-2 shadow-card">
           <span className="text-xs text-amber-900">Εκκρεμή ποσά</span>
           <span className="ml-auto font-display font-bold text-xl tabular-nums text-amber-900">
             {formatEUR(pendingAmount)}

@@ -1,4 +1,5 @@
-import { Archive, HardHat, Settings, User, LogOut } from 'lucide-react'
+import { Archive, Settings, User, LogOut } from 'lucide-react'
+import BrandMark from './BrandMark'
 
 export default function Header({
   activeProject,
@@ -11,7 +12,7 @@ export default function Header({
   const inProject = !showOverview && Boolean(activeProject)
 
   return (
-    <div className="sticky top-0 bg-stone-50 border-b border-stone-200 px-4 py-3 flex items-center gap-1.5 z-10">
+    <div className="sticky top-0 bg-stone-50 shadow-header px-4 py-3.5 flex items-center gap-2 z-10">
       {inProject ? (
         // Bigger tap target than the icon itself (see the same pattern
         // below) — these are hit often, one-handed, sometimes gloved, not
@@ -21,10 +22,10 @@ export default function Header({
           className="text-rust-700 shrink-0 p-2.5 -ml-2.5 rounded-lg active:bg-stone-200"
           aria-label="Όλα τα έργα"
         >
-          <HardHat className="w-5 h-5" strokeWidth={2.25} />
+          <BrandMark className="w-6 h-6" />
         </button>
       ) : (
-        <HardHat className="w-5 h-5 text-rust-700 shrink-0" strokeWidth={2.25} />
+        <BrandMark className="w-6 h-6 text-rust-700 shrink-0" />
       )}
       <div className="flex-1 min-w-0 ml-1">
         {inProject ? (

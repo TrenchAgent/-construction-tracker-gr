@@ -22,7 +22,7 @@ export default function ProjectsOverview({
         <h2 className="font-display font-bold text-lg text-stone-800">Τα έργα μου</h2>
         <button
           onClick={onNewProject}
-          className="text-xs text-rust-700 font-medium flex items-center gap-0.5"
+          className="btn-primary text-xs rounded-lg px-3 py-2 flex items-center gap-1"
         >
           <Plus size={13} />
           Νέο έργο
@@ -46,7 +46,7 @@ export default function ProjectsOverview({
             <button
               key={p.id}
               onClick={() => onSelectProject(p.id)}
-              className="w-full text-left bg-white border border-stone-200 rounded-xl p-4 active:bg-stone-50"
+              className="w-full text-left bg-white rounded-xl p-4 shadow-card active:bg-stone-50"
             >
               <div className="flex items-center gap-1.5 mb-0.5">
                 <span className="font-display font-bold text-lg truncate">{p.name}</span>

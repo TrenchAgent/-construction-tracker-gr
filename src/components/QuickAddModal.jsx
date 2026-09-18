@@ -180,7 +180,7 @@ export default function QuickAddModal({
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end justify-center z-20">
       <div
-        className="bg-white w-full max-w-md rounded-t-2xl p-5"
+        className="bg-white w-full max-w-md rounded-t-2xl p-5 shadow-modal"
         style={{ maxHeight: '85vh', overflowY: 'auto' }}
       >
         <div className="flex items-center mb-4">
@@ -366,7 +366,7 @@ export default function QuickAddModal({
         <button
           onClick={handleSave}
           disabled={busy}
-          className="w-full bg-rust-700 text-white rounded-xl py-2.5 font-medium text-sm disabled:opacity-60"
+          className="btn-primary w-full rounded-xl py-2.5 text-sm"
         >
           {busy ? 'Αποθήκευση…' : 'Αποθήκευση'}
         </button>

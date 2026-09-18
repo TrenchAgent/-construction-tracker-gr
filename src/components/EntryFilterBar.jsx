@@ -41,7 +41,7 @@ export default function EntryFilterBar({ filters, onChange }) {
       </div>
 
       {expanded && (
-        <div className="mt-2 bg-white border border-stone-200 rounded-xl p-3 space-y-2.5">
+        <div className="mt-2 bg-white rounded-xl p-3 space-y-2.5 shadow-card">
           <div className="grid grid-cols-2 gap-2">
             <select
               value={filters.category}

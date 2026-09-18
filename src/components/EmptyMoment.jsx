@@ -14,10 +14,18 @@ export default function EmptyMoment({ Icon, tone = 'rust', title, children, acti
   // real rendered contrast rather than assuming a "light bg, muted
   // icon" combination would be fine. -800 clears 7:1 for both.
   const badgeTone = tone === 'rust' ? 'bg-rust-100 text-rust-800' : 'bg-stone-200 text-stone-700'
+  // A contained block, not text floating on the bare (now textured)
+  // page background — the actual fix for "sparse reads as unfinished":
+  // more generous padding, a bigger icon badge, and its own card
+  // elevation give a sparse screen (one project, zero entries) enough
+  // visual weight to read as deliberately clean instead of incomplete.
+  // Translucent rather than solid white so the page's blueprint texture
+  // still shows faintly through it — this is content sitting on that
+  // surface, not a separate opaque layer blocking it out.
   return (
-    <div className="text-center py-8 px-4">
-      <div className={'w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center ' + badgeTone}>
-        <Icon size={28} strokeWidth={iconStrokeWidth} />
+    <div className="text-center py-10 px-6 bg-white/80 rounded-2xl shadow-card">
+      <div className={'w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center ' + badgeTone}>
+        <Icon size={32} strokeWidth={iconStrokeWidth} />
       </div>
       {/* Narrow enough to force a wrap, not just "narrower" — max-w-xs
           (320px) still let every real title in this app render as one

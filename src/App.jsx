@@ -571,14 +571,14 @@ export default function App({ session, onSignOut }) {
 
   if (loading) {
     return (
-      <div className="max-w-md mx-auto min-h-screen bg-stone-50 flex items-center justify-center text-stone-400 text-sm">
+      <div className="max-w-md mx-auto min-h-screen bg-stone-50 bg-blueprint flex items-center justify-center text-stone-400 text-sm">
         Φόρτωση…
       </div>
     )
   }
 
   return (
-    <div className="max-w-md mx-auto bg-stone-50 min-h-screen text-stone-900 font-sans">
+    <div className="max-w-md mx-auto bg-stone-50 bg-blueprint min-h-screen text-stone-900 font-sans">
       {error && (
         <div className="bg-rose-50 text-rose-700 text-xs px-4 py-2 flex items-center gap-2 border-b border-rose-200">
           <span className="flex-1">{error}</span>
@@ -643,7 +643,7 @@ export default function App({ session, onSignOut }) {
             <h3 className="font-display font-bold text-lg text-stone-800">Καταχωρήσεις</h3>
             <button
               onClick={() => setShowNewProject(true)}
-              className="text-xs text-rust-700 font-medium flex items-center gap-0.5"
+              className="btn-primary text-xs rounded-lg px-3 py-2 flex items-center gap-1"
             >
               <Plus size={13} />
               Νέο έργο
@@ -667,7 +667,7 @@ export default function App({ session, onSignOut }) {
         <button
           onClick={openQuickAdd}
           className={
-            'fixed right-5 bg-rust-700 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center transition-[bottom] duration-200 ' +
+            'fixed right-5 bg-rust-700 text-white rounded-full w-14 h-14 shadow-button flex items-center justify-center transition-[bottom] duration-200 ' +
             // A toast (either kind) sits in this exact corner and is
             // solid, not translucent — without this, it doesn't just
             // cover the FAB, it eats the tap: found by actually trying
