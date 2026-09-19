@@ -19,6 +19,33 @@ create table if not exists projects (
   created_at timestamptz not null default now()
 );
 
+-- clients — a real, reusable entity (a client can be attached to several
+-- projects over time), not per-project duplicate data. One row per
+-- client, owned per-user exactly like projects. Created here, ahead of
+-- projects' own later ALTERs, because projects.client_id (added below)
+-- and its RLS both reference this table — it has to exist first.
+--
+-- `type` picks which of the two label sets the UI shows (Ιδιώτης:
+-- Όνομα/ΑΦΜ; Εταιρεία: Επωνυμία/ΑΦΜ/ΓΕΜΗ/ΔΟΥ) — `name` holds whichever
+-- one applies (a person's name or a company's trade name is the same
+-- underlying "what do we call this client" field either way, so one
+-- column, not two). gemi/doy stay null for an individual; the UI's job
+-- to only show them for a company, not this table's.
+create table if not exists clients (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  type text not null check (type in ('individual', 'company')),
+  name text not null,
+  afm text,
+  gemi text,
+  doy text,
+  address text,
+  email text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists clients_user_id_idx on clients (user_id);
+
 -- Archiving a project (added after projects already existed in
 -- production, so this is an ALTER) hides it from the active list and the
 -- all-projects overview without deleting anything — null means active,
@@ -41,6 +68,11 @@ alter table projects add column if not exists archived_at timestamptz;
 alter table projects add column if not exists budget_estimate numeric(12, 2);
 alter table projects add column if not exists start_date date;
 alter table projects add column if not exists target_completion_date date;
+
+-- A project can optionally be linked to one client. on delete set null
+-- (not cascade) — deleting a client should stop it appearing on a
+-- project, not take the project's own data down with it.
+alter table projects add column if not exists client_id uuid references clients (id) on delete set null;
 
 create table if not exists entries (
   id uuid primary key default gen_random_uuid(),
@@ -110,6 +142,7 @@ alter table project_collaborators add constraint project_collaborators_email_low
 alter table projects enable row level security;
 alter table entries enable row level security;
 alter table project_collaborators enable row level security;
+alter table clients enable row level security;
 
 -- ---------------------------------------------------------------------
 -- Helper functions — SECURITY DEFINER, so they bypass RLS *internally*
@@ -156,17 +189,55 @@ as $$
   limit 1;
 $$;
 
+-- Added alongside the clients table (see below), same reason as the two
+-- functions above: projects.client_id needs to check "does the caller
+-- actually own this client" (so a project owner can't point client_id at
+-- a client belonging to someone else — see that check's own comment on
+-- the projects policy for the concrete attack this closes), and clients'
+-- own collaborator-visibility policy needs to check projects — a direct
+-- subquery on both sides would be the exact same cross-table cycle as
+-- projects <-> project_collaborators above.
+create or replace function owns_client(target_client_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from clients c
+    where c.id = target_client_id
+    and c.user_id = auth.uid()
+  );
+$$;
+
 -- ---------------------------------------------------------------------
 -- projects
 -- ---------------------------------------------------------------------
 
 -- Owner: full control (select/insert/update/delete) over their own
--- projects — unchanged from before collaborators existed.
+-- projects — unchanged from before collaborators existed. The extra
+-- client_id clause (added alongside the clients table below) closes a
+-- real hole, not a theoretical one: without it, an owner could point
+-- their OWN project's client_id at a client UUID they don't own —
+-- belonging to a total stranger, guessed or leaked — and then either
+-- read it themselves (if a naive policy on clients granted visibility to
+-- "any project that links to this client") or, worse, hand visibility to
+-- an alt account by inviting it as a collaborator on that same project
+-- (see "collaborators can view linked clients" below, which is scoped to
+-- a genuine collaborator role for exactly this reason). Blocking the
+-- write at the source — a project's client_id can only ever be set to a
+-- client the same owner actually owns — makes both of those paths a
+-- non-issue rather than something the read side has to keep defending
+-- against.
 drop policy if exists "own projects only" on projects;
 create policy "own projects only" on projects
   for all
   using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  with check (
+    auth.uid() = user_id
+    and (client_id is null or owns_client(client_id))
+  );
 
 -- Collaborators (any role) can VIEW a project they've been added to, but
 -- this is a select-only policy — renaming/deleting the project itself, and
@@ -232,6 +303,47 @@ drop policy if exists "collaborator sees own invite" on project_collaborators;
 create policy "collaborator sees own invite" on project_collaborators
   for select
   using (lower(auth.email()) = email);
+
+-- ---------------------------------------------------------------------
+-- clients — RLS policies. The table itself is created much earlier in
+-- this file (right after projects' base CREATE TABLE), since projects.
+-- client_id and the owns_client() helper both depend on it existing
+-- first — see the comment there. This section just owns who can read
+-- and write it, same as every other table's RLS section.
+-- ---------------------------------------------------------------------
+
+-- Owner: full control — same "own projects only" pattern as projects
+-- itself. Only the owner creates/edits/deletes their own clients;
+-- collaborators never do (see the select-only policy below), the same
+-- split as project settings being owner-only while entries are editable
+-- by editors.
+drop policy if exists "own clients only" on clients;
+create policy "own clients only" on clients
+  for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- A collaborator on any project this client is linked to can VIEW that
+-- client (e.g. someone helping manage a shared project's entries can
+-- also see who the project is for) — never write. Deliberately scoped
+-- to my_project_role(p.id) is not null — a genuine collaborator row —
+-- rather than "any project visible to me that links to this client":
+-- the owner's own case is already covered by "own clients only" above,
+-- so the only thing this policy needs to grant is real collaborator
+-- access, and being explicit about that is what stops the projects.
+-- client_id write-time check above from being the *only* thing standing
+-- between a forged link and real exposure — both have to agree before
+-- anyone actually sees a client they don't own.
+drop policy if exists "collaborators can view linked clients" on clients;
+create policy "collaborators can view linked clients" on clients
+  for select
+  using (
+    exists (
+      select 1 from projects p
+      where p.client_id = clients.id
+      and my_project_role(p.id) is not null
+    )
+  );
 
 -- ---------------------------------------------------------------------
 -- subscriptions — one row per user, written only by the Stripe webhook

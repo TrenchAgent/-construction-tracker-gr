@@ -34,6 +34,7 @@ function mapProject(row) {
     budgetEstimate: row.budget_estimate != null ? Number(row.budget_estimate) : null,
     startDate: row.start_date || null,
     targetCompletionDate: row.target_completion_date || null,
+    clientId: row.client_id || null,
   }
 }
 
@@ -328,4 +329,108 @@ export async function addCollaborator(projectId, { email, role }) {
 export async function removeCollaborator(id) {
   const { error } = await supabase.from('project_collaborators').delete().eq('id', id)
   if (error) throw error
+}
+
+// ---------------------------------------------------------------------
+// Clients — a real, reusable entity (supabase/schema.sql's `clients`
+// table), not per-project duplicate data. gemi/doy are company-only in
+// the UI but this layer doesn't enforce that — same "form's job, not
+// storage's" split as everywhere else in this file (e.g. QuickAddModal
+// deciding which fields apply to which entry kind).
+// ---------------------------------------------------------------------
+
+function mapClient(row) {
+  return {
+    id: row.id,
+    type: row.type,
+    name: row.name,
+    afm: row.afm || '',
+    gemi: row.gemi || '',
+    doy: row.doy || '',
+    address: row.address || '',
+    email: row.email || '',
+    ownerId: row.user_id,
+    createdAt: row.created_at,
+  }
+}
+
+// Owned clients + any belonging to someone else that a project you
+// collaborate on happens to be linked to — same "owned + shared, RLS
+// sorts it out" shape as getProjects().
+export async function getClients() {
+  const { data, error } = await supabase.from('clients').select('*').order('name', { ascending: true })
+  if (error) throw error
+  return data.map(mapClient)
+}
+
+export async function addClient({ type, name, afm, gemi, doy, address, email }) {
+  const { data, error } = await supabase
+    .from('clients')
+    .insert({
+      type,
+      name,
+      afm: afm || null,
+      gemi: gemi || null,
+      doy: doy || null,
+      address: address || null,
+      email: email || null,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return mapClient(data)
+}
+
+export async function updateClient(id, { type, name, afm, gemi, doy, address, email }) {
+  const { data, error } = await supabase
+    .from('clients')
+    .update({
+      type,
+      name,
+      afm: afm || null,
+      gemi: gemi || null,
+      doy: doy || null,
+      address: address || null,
+      email: email || null,
+    })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return mapClient(data)
+}
+
+// No receipts/entries hang off a client the way they do off a project —
+// deleting the row is the whole operation. Any project that had this
+// client linked just has its client_id cleared (on delete set null in
+// schema.sql), not deleted itself.
+export async function deleteClient(id) {
+  const { error } = await supabase.from('clients').delete().eq('id', id)
+  if (error) throw error
+}
+
+// Which project(s) a client is linked to — the client detail view's
+// "Συνδεδεμένα έργα" section. Plain projects rows (not mapProject's full
+// shape) would work too, but reusing mapProject keeps this consistent
+// with every other project listing in the app.
+export async function getClientProjects(clientId) {
+  const { data, error } = await supabase.from('projects').select('*').eq('client_id', clientId)
+  if (error) throw error
+  return data.map(mapProject)
+}
+
+// Linking/unlinking a client is its own action (pick-from-list or
+// "remove client"), not a field in the general project-settings form —
+// separate function rather than folding client_id into updateProject's
+// generic field list, the same way collaborators are their own
+// add/remove functions rather than a field on the project.
+export async function setProjectClient(projectId, clientId) {
+  const { data, error } = await supabase
+    .from('projects')
+    .update({ client_id: clientId })
+    .eq('id', projectId)
+    .select()
+    .single()
+  if (error) throw error
+  return mapProject(data)
 }
