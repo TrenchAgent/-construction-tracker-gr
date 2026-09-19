@@ -4,6 +4,9 @@ import { X } from 'lucide-react'
 export default function NewProjectModal({ onClose, onCreate }) {
   const [name, setName] = useState('')
   const [location, setLocation] = useState('')
+  const [budgetEstimate, setBudgetEstimate] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [targetCompletionDate, setTargetCompletionDate] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -15,7 +18,13 @@ export default function NewProjectModal({ onClose, onCreate }) {
     setBusy(true)
     setError('')
     try {
-      await onCreate({ name: name.trim(), location: location.trim() })
+      await onCreate({
+        name: name.trim(),
+        location: location.trim(),
+        budgetEstimate: budgetEstimate ? parseFloat(budgetEstimate) : null,
+        startDate: startDate || null,
+        targetCompletionDate: targetCompletionDate || null,
+      })
       onClose() // unmounts this component — don't touch state after this
     } catch (err) {
       setError(err.message || 'Κάτι πήγε στραβά, δοκιμάστε ξανά')
@@ -46,6 +55,35 @@ export default function NewProjectModal({ onClose, onCreate }) {
           value={location}
           onChange={(e) => setLocation(e.target.value)}
         />
+        <label className="block text-xs text-stone-500 mb-1">Αρχικός προϋπολογισμός € (προαιρετικό)</label>
+        <input
+          type="number"
+          inputMode="decimal"
+          className="w-full border border-stone-300 rounded-lg px-3 py-2 mb-3 text-sm"
+          placeholder="0.00"
+          value={budgetEstimate}
+          onChange={(e) => setBudgetEstimate(e.target.value)}
+        />
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <div>
+            <label className="block text-xs text-stone-500 mb-1">Έναρξη (προαιρετικό)</label>
+            <input
+              type="date"
+              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-stone-500 mb-1">Ολοκλήρωση (προαιρετικό)</label>
+            <input
+              type="date"
+              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm"
+              value={targetCompletionDate}
+              onChange={(e) => setTargetCompletionDate(e.target.value)}
+            />
+          </div>
+        </div>
         {error && <div className="text-xs text-rose-600 mb-2">{error}</div>}
         <button
           onClick={handleCreate}

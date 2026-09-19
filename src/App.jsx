@@ -5,6 +5,7 @@ import EmptyState from './components/EmptyState'
 import ProjectsOverview from './components/ProjectsOverview'
 import ArchivedProjects from './components/ArchivedProjects'
 import DashboardSummary from './components/DashboardSummary'
+import ProjectMeta from './components/ProjectMeta'
 import TimeBreakdown from './components/TimeBreakdown'
 import MonthlyTrendChart from './components/MonthlyTrendChart'
 import EntryList from './components/EntryList'
@@ -276,9 +277,12 @@ export default function App({ session, onSignOut }) {
   }
 
   // Throws on failure — NewProjectModal awaits this and shows the error
-  // itself, so the modal stays open with what the user typed.
-  async function createProject({ name, location }) {
-    const project = await storage.addProject({ name, location })
+  // itself, so the modal stays open with what the user typed. A plain
+  // passthrough (not destructured field-by-field like before budget/dates
+  // existed) — every field this form collects goes straight to storage,
+  // one place to update if that form ever changes rather than three.
+  async function createProject(fields) {
+    const project = await storage.addProject(fields)
     setProjects((list) => [{ ...project, role: 'owner' }, ...list])
     onboarding.markHasHadProject(session.user.id)
     await switchProject(project.id)
@@ -628,6 +632,12 @@ export default function App({ session, onSignOut }) {
         />
       ) : (
         <div className="p-4 pb-24">
+          <ProjectMeta
+            budgetEstimate={activeProject?.budgetEstimate}
+            startDate={activeProject?.startDate}
+            targetCompletionDate={activeProject?.targetCompletionDate}
+          />
+
           <DashboardSummary
             income={income}
             expense={expense}

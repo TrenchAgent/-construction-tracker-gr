@@ -33,6 +33,15 @@ create table if not exists projects (
 -- came from).
 alter table projects add column if not exists archived_at timestamptz;
 
+-- Budget estimate and target timeline — all three optional (a project can
+-- be created before any of these are known), same "added after projects
+-- already existed" ALTER pattern as archived_at above. No RLS changes
+-- needed here either, for the same reason: every policy on this table is
+-- keyed on ownership/collaborator role, never on these columns.
+alter table projects add column if not exists budget_estimate numeric(12, 2);
+alter table projects add column if not exists start_date date;
+alter table projects add column if not exists target_completion_date date;
+
 create table if not exists entries (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,

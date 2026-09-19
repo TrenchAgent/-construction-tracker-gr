@@ -1,4 +1,5 @@
 import { PAYMENT_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '../constants'
+import { formatDateGr } from './format'
 
 // CSV export for a project's entries. A few deliberate choices here that
 // aren't obvious from the code alone:
@@ -43,11 +44,6 @@ function escapeField(value) {
 
 function formatAmount(amount) {
   return amount.toFixed(2).replace('.', ',')
-}
-
-function formatDateGr(isoDate) {
-  const [y, m, d] = isoDate.split('-')
-  return `${d}/${m}/${y}`
 }
 
 export function entriesToCsv(entries) {

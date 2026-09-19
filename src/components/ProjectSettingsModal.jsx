@@ -146,6 +146,11 @@ export default function ProjectSettingsModal({
   const isArchived = Boolean(project.archivedAt)
   const [name, setName] = useState(project.name)
   const [location, setLocation] = useState(project.location)
+  const [budgetEstimate, setBudgetEstimate] = useState(
+    project.budgetEstimate != null ? String(project.budgetEstimate) : '',
+  )
+  const [startDate, setStartDate] = useState(project.startDate || '')
+  const [targetCompletionDate, setTargetCompletionDate] = useState(project.targetCompletionDate || '')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -157,7 +162,13 @@ export default function ProjectSettingsModal({
     setBusy(true)
     setError('')
     try {
-      await onSave({ name: name.trim(), location: location.trim() })
+      await onSave({
+        name: name.trim(),
+        location: location.trim(),
+        budgetEstimate: budgetEstimate ? parseFloat(budgetEstimate) : null,
+        startDate: startDate || null,
+        targetCompletionDate: targetCompletionDate || null,
+      })
       onClose()
     } catch (err) {
       setError(err.message || 'Κάτι πήγε στραβά, δοκιμάστε ξανά')
@@ -230,6 +241,35 @@ export default function ProjectSettingsModal({
               value={location}
               onChange={(e) => setLocation(e.target.value)}
             />
+            <label className="block text-xs text-stone-500 mb-1">Αρχικός προϋπολογισμός € (προαιρετικό)</label>
+            <input
+              type="number"
+              inputMode="decimal"
+              className="w-full border border-stone-300 rounded-lg px-3 py-2 mb-3 text-sm"
+              placeholder="0.00"
+              value={budgetEstimate}
+              onChange={(e) => setBudgetEstimate(e.target.value)}
+            />
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div>
+                <label className="block text-xs text-stone-500 mb-1">Έναρξη (προαιρετικό)</label>
+                <input
+                  type="date"
+                  className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-stone-500 mb-1">Ολοκλήρωση (προαιρετικό)</label>
+                <input
+                  type="date"
+                  className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm"
+                  value={targetCompletionDate}
+                  onChange={(e) => setTargetCompletionDate(e.target.value)}
+                />
+              </div>
+            </div>
             {error && <div className="text-xs text-rose-600 mb-2">{error}</div>}
             <button
               onClick={handleSave}

@@ -31,6 +31,9 @@ function mapProject(row) {
     // undefined (column not migrated yet on this database) collapses to
     // null the same as "not archived" — see getProjects' own comment.
     archivedAt: row.archived_at || null,
+    budgetEstimate: row.budget_estimate != null ? Number(row.budget_estimate) : null,
+    startDate: row.start_date || null,
+    targetCompletionDate: row.target_completion_date || null,
   }
 }
 
@@ -171,10 +174,16 @@ export async function getProjectSummaries() {
   return byProjectId
 }
 
-export async function addProject({ name, location }) {
+export async function addProject({ name, location, budgetEstimate, startDate, targetCompletionDate }) {
   const { data, error } = await supabase
     .from('projects')
-    .insert({ name, location: location || null })
+    .insert({
+      name,
+      location: location || null,
+      budget_estimate: budgetEstimate || null,
+      start_date: startDate || null,
+      target_completion_date: targetCompletionDate || null,
+    })
     .select()
     .single()
   if (error) throw error
@@ -248,10 +257,16 @@ export async function deleteEntry(id) {
   }
 }
 
-export async function updateProject(id, { name, location }) {
+export async function updateProject(id, { name, location, budgetEstimate, startDate, targetCompletionDate }) {
   const { data, error } = await supabase
     .from('projects')
-    .update({ name, location: location || null })
+    .update({
+      name,
+      location: location || null,
+      budget_estimate: budgetEstimate || null,
+      start_date: startDate || null,
+      target_completion_date: targetCompletionDate || null,
+    })
     .eq('id', id)
     .select()
     .single()
