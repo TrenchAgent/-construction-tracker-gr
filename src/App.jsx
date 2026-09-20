@@ -14,6 +14,8 @@ import { EMPTY_FILTERS, applyEntryFilters, isFilterActive } from './lib/entryFil
 import NewProjectModal from './components/NewProjectModal'
 import QuickAddModal from './components/QuickAddModal'
 import ProjectSettingsModal from './components/ProjectSettingsModal'
+import ClientsTab from './components/ClientsTab'
+import ClientModal from './components/ClientModal'
 import AccountModal from './components/AccountModal'
 import UndoToast from './components/UndoToast'
 import StatusToast from './components/StatusToast'
@@ -89,6 +91,14 @@ export default function App({ session, onSignOut }) {
   // keeping them independent avoids conflating "which top-level screen"
   // with "which list within it."
   const [showArchived, setShowArchived] = useState(false)
+  // Πελατολόγιο — reachable from the header regardless of which other
+  // screen is showing (unlike showArchived, which is only reachable from
+  // the overview), so this is checked ahead of everything else in the
+  // render below rather than nested under showOverview.
+  const [showClients, setShowClients] = useState(false)
+  const [clients, setClients] = useState([])
+  const [showClientModal, setShowClientModal] = useState(false)
+  const [editingClient, setEditingClient] = useState(null)
   const [summaries, setSummaries] = useState(new Map())
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   // { kind: 'entry' | 'project', id, label, timeoutId } | null — see
@@ -217,15 +227,17 @@ export default function App({ session, onSignOut }) {
     let cancelled = false
     async function load() {
       try {
-        const [rawProjects, myCollaborations, projectSummaries] = await Promise.all([
+        const [rawProjects, myCollaborations, projectSummaries, clientList] = await Promise.all([
           storage.getProjects(),
           storage.getMyCollaborations(session.user.email),
           storage.getProjectSummaries(),
+          storage.getClients(),
         ])
         if (cancelled) return
         const list = attachRoles(rawProjects, myCollaborations, session.user.id)
         setProjects(list)
         setSummaries(projectSummaries)
+        setClients(clientList)
         if (list.length > 0) onboarding.markHasHadProject(session.user.id)
         // Land on the overview whenever there's anything to show on it —
         // no auto-picking a "first" project and fetching its entries
@@ -250,6 +262,7 @@ export default function App({ session, onSignOut }) {
     setActiveId(id)
     setShowOverview(false)
     setShowArchived(false)
+    setShowClients(false)
     setFilters(EMPTY_FILTERS) // a filter set on one project isn't likely to mean anything on another
     try {
       const fresh = await storage.getEntries(id)
@@ -269,6 +282,7 @@ export default function App({ session, onSignOut }) {
   async function goToOverview() {
     setShowOverview(true)
     setShowArchived(false)
+    setShowClients(false)
     try {
       setSummaries(await storage.getProjectSummaries())
     } catch (err) {
@@ -287,6 +301,60 @@ export default function App({ session, onSignOut }) {
     onboarding.markHasHadProject(session.user.id)
     await switchProject(project.id)
     showStatus('Το έργο δημιουργήθηκε')
+  }
+
+  function openNewClient() {
+    setEditingClient(null)
+    setShowClientModal(true)
+  }
+
+  function openEditClient(client) {
+    setEditingClient(client)
+    setShowClientModal(true)
+  }
+
+  // Throws on failure — ClientModal displays it. Handles both add and
+  // edit, same "which one depends on whether editingClient is set"
+  // pattern as saveEntry below.
+  async function saveClient(fields) {
+    if (editingClient) {
+      const saved = await storage.updateClient(editingClient.id, fields)
+      setClients((list) => list.map((c) => (c.id === saved.id ? saved : c)))
+      showStatus('Οι αλλαγές αποθηκεύτηκαν')
+    } else {
+      const saved = await storage.addClient(fields)
+      setClients((list) => [...list, saved].sort((a, b) => a.name.localeCompare(b.name, 'el')))
+      showStatus('Ο πελάτης προστέθηκε')
+    }
+  }
+
+  // Confirmation already happened in ClientModal. Same deferred-delete
+  // machinery as entries/projects (see startPendingDelete below) — kind:
+  // 'client' is a third value of the same enum, not a parallel mechanism.
+  function deleteClientById(id) {
+    const client = clients.find((c) => c.id === id)
+    startPendingDelete('client', id, client ? `Διαγράφηκε: «${client.name}»` : 'Ο πελάτης διαγράφηκε')
+  }
+
+  // Both called from ClientPickerModal (reached from ProjectSettingsModal)
+  // — linking an existing client, or creating one inline and linking it
+  // in the same action. Either way this updates the SAME clients table
+  // and the SAME projects.client_id column the Πελατολόγιο tab and
+  // ProjectSettingsModal already read from, never separate data.
+  async function linkClientToProject(clientId) {
+    const saved = await storage.setProjectClient(activeId, clientId)
+    setProjects((list) => list.map((p) => (p.id === saved.id ? { ...saved, role: p.role } : p)))
+  }
+
+  async function createAndLinkClient(fields) {
+    const client = await storage.addClient(fields)
+    setClients((list) => [...list, client].sort((a, b) => a.name.localeCompare(b.name, 'el')))
+    await linkClientToProject(client.id)
+  }
+
+  async function unlinkClient() {
+    const saved = await storage.setProjectClient(activeId, null)
+    setProjects((list) => list.map((p) => (p.id === saved.id ? { ...saved, role: p.role } : p)))
   }
 
   // Same contract: throws on failure, QuickAddModal displays it. Handles
@@ -408,6 +476,18 @@ export default function App({ session, onSignOut }) {
       } catch (err) {
         setError(err.message || 'Η διαγραφή απέτυχε')
       }
+    } else if (pending.kind === 'client') {
+      try {
+        await storage.deleteClient(pending.id)
+        setClients((list) => list.filter((c) => c.id !== pending.id))
+        // A deleted client's on delete set null (schema.sql) clears
+        // client_id server-side on any project that had it linked — mirror
+        // that locally so a project dashboard/settings screen still open
+        // right now doesn't keep showing a client that no longer exists.
+        setProjects((list) => list.map((p) => (p.clientId === pending.id ? { ...p, clientId: null } : p)))
+      } catch (err) {
+        setError(err.message || 'Η διαγραφή απέτυχε')
+      }
     }
   }
 
@@ -525,12 +605,16 @@ export default function App({ session, onSignOut }) {
   // safe against an unrelated re-fetch landing mid-window.
   const pendingDeleteEntryId = pendingDelete?.kind === 'entry' ? pendingDelete.id : null
   const pendingDeleteProjectId = pendingDelete?.kind === 'project' ? pendingDelete.id : null
+  const pendingDeleteClientId = pendingDelete?.kind === 'client' ? pendingDelete.id : null
   const visibleEntries = pendingDeleteEntryId
     ? entries.filter((e) => e.id !== pendingDeleteEntryId)
     : entries
   const visibleProjects = pendingDeleteProjectId
     ? projects.filter((p) => p.id !== pendingDeleteProjectId)
     : projects
+  const visibleClients = pendingDeleteClientId
+    ? clients.filter((c) => c.id !== pendingDeleteClientId)
+    : clients
   // Active vs. archived is purely a client-side split of the same list —
   // see storage.getProjects' own comment for why that's one query, not two.
   const activeProjects = visibleProjects.filter((p) => !p.archivedAt)
@@ -556,6 +640,9 @@ export default function App({ session, onSignOut }) {
     .reduce((s, e) => s + e.amount, 0)
   const activeProject = projects.find((p) => p.id === activeId)
   const canEdit = activeProject && activeProject.role !== 'viewer'
+  const linkedClient = activeProject?.clientId
+    ? visibleClients.find((c) => c.id === activeProject.clientId) || null
+    : null
   // Filtering only narrows what's shown in the list below — the totals
   // above (income/expense/profit/pending, time breakdown) always reflect
   // the whole project, not just whatever's currently filtered into view.
@@ -571,7 +658,7 @@ export default function App({ session, onSignOut }) {
   // modal has the user's attention — the underlying timer (for an undo
   // window) keeps running regardless, so nothing here is lost, only
   // deferred until every modal closes.
-  const anyModalOpen = showNewProject || showQuickAdd || showProjectSettings || showAccount
+  const anyModalOpen = showNewProject || showQuickAdd || showProjectSettings || showAccount || showClientModal
 
   if (loading) {
     return (
@@ -603,13 +690,22 @@ export default function App({ session, onSignOut }) {
       <Header
         activeProject={activeProject}
         showOverview={showOverview}
+        showClients={showClients}
         onGoHome={goToOverview}
         onOpenProjectSettings={() => setShowProjectSettings(true)}
+        onOpenClients={() => setShowClients(true)}
         onOpenAccount={() => setShowAccount(true)}
         onSignOut={onSignOut}
       />
 
-      {projects.length === 0 ? (
+      {showClients ? (
+        <ClientsTab
+          clients={visibleClients}
+          onBack={() => setShowClients(false)}
+          onSelectClient={openEditClient}
+          onNewClient={openNewClient}
+        />
+      ) : projects.length === 0 ? (
         <EmptyState
           isFirstRun={!onboarding.hasEverHadProject(session.user.id)}
           onNewProject={() => setShowNewProject(true)}
@@ -673,7 +769,7 @@ export default function App({ session, onSignOut }) {
         </div>
       )}
 
-      {!showOverview && activeProject && canEdit && (
+      {!showOverview && !showClients && activeProject && canEdit && (
         <button
           onClick={openQuickAdd}
           className={
@@ -721,6 +817,21 @@ export default function App({ session, onSignOut }) {
           onLoadCollaborators={loadCollaborators}
           onInviteCollaborator={inviteCollaborator}
           onRemoveCollaborator={removeCollaboratorById}
+          clients={visibleClients}
+          linkedClient={linkedClient}
+          onLinkClient={linkClientToProject}
+          onCreateAndLinkClient={createAndLinkClient}
+          onUnlinkClient={unlinkClient}
+        />
+      )}
+
+      {showClientModal && (
+        <ClientModal
+          client={editingClient}
+          onClose={() => setShowClientModal(false)}
+          onSave={saveClient}
+          onDelete={() => deleteClientById(editingClient.id)}
+          onLoadLinkedProjects={storage.getClientProjects}
         />
       )}
 

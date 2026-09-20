@@ -11,6 +11,8 @@ import {
   FileSignature,
   Eye,
   Pencil,
+  User,
+  Building2,
 } from 'lucide-react'
 
 // Expense categories are deliberately kept to exactly these three — see the
@@ -118,4 +120,16 @@ export const COLLABORATOR_ROLE_LABELS = {
 export const COLLABORATOR_ROLE_ICONS = {
   viewer: Eye,
   editor: Pencil,
+}
+
+export const CLIENT_TYPES = ['individual', 'company']
+
+export const CLIENT_TYPE_LABELS = {
+  individual: 'Ιδιώτης',
+  company: 'Εταιρεία',
+}
+
+export const CLIENT_TYPE_ICONS = {
+  individual: User,
+  company: Building2,
 }

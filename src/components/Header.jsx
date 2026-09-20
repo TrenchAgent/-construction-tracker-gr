@@ -1,15 +1,17 @@
-import { Archive, Settings, User, LogOut } from 'lucide-react'
+import { Archive, Settings, User, Users, LogOut } from 'lucide-react'
 import BrandMark from './BrandMark'
 
 export default function Header({
   activeProject,
   showOverview,
+  showClients,
   onGoHome,
   onOpenProjectSettings,
+  onOpenClients,
   onOpenAccount,
   onSignOut,
 }) {
-  const inProject = !showOverview && Boolean(activeProject)
+  const inProject = !showOverview && !showClients && Boolean(activeProject)
 
   return (
     <div className="sticky top-0 bg-stone-50 shadow-header px-4 py-3.5 flex items-center gap-2 z-10">
@@ -49,7 +51,7 @@ export default function Header({
             )}
           </>
         ) : (
-          <div className="font-display font-bold text-lg">Διαχείριση Έργου</div>
+          <div className="font-display font-bold text-lg">{showClients ? 'Πελατολόγιο' : 'Διαχείριση Έργου'}</div>
         )}
       </div>
       {inProject && (
@@ -61,6 +63,13 @@ export default function Header({
           <Settings className="w-4 h-4" />
         </button>
       )}
+      <button
+        onClick={onOpenClients}
+        className="text-stone-500 active:bg-stone-200 shrink-0 p-2.5 rounded-lg"
+        aria-label="Πελατολόγιο"
+      >
+        <Users className="w-4 h-4" />
+      </button>
       <button
         onClick={onOpenAccount}
         className="text-stone-500 active:bg-stone-200 shrink-0 p-2.5 rounded-lg"

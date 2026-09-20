@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
-import { X, Archive, ArchiveRestore, FileDown, Trash2, UserPlus, Users } from 'lucide-react'
-import { COLLABORATOR_ROLES, COLLABORATOR_ROLE_LABELS, COLLABORATOR_ROLE_ICONS } from '../constants'
+import { X, Archive, ArchiveRestore, FileDown, Trash2, UserPlus, Users, Briefcase } from 'lucide-react'
+import {
+  COLLABORATOR_ROLES,
+  COLLABORATOR_ROLE_LABELS,
+  COLLABORATOR_ROLE_ICONS,
+  CLIENT_TYPE_ICONS,
+} from '../constants'
 import OptionPill from './OptionPill'
+import ClientPickerModal from './ClientPickerModal'
 
 function CollaboratorsSection({ onLoadCollaborators, onInvite, onRemove }) {
   const [collaborators, setCollaborators] = useState(null) // null = loading
@@ -141,9 +147,15 @@ export default function ProjectSettingsModal({
   onLoadCollaborators,
   onInviteCollaborator,
   onRemoveCollaborator,
+  clients,
+  linkedClient,
+  onLinkClient,
+  onCreateAndLinkClient,
+  onUnlinkClient,
 }) {
   const isOwner = project.role === 'owner'
   const isArchived = Boolean(project.archivedAt)
+  const [showClientPicker, setShowClientPicker] = useState(false)
   const [name, setName] = useState(project.name)
   const [location, setLocation] = useState(project.location)
   const [budgetEstimate, setBudgetEstimate] = useState(
@@ -307,6 +319,38 @@ export default function ProjectSettingsModal({
 
         {isOwner && (
           <>
+            <div className="mb-4 pt-4 border-t border-stone-200">
+              <h4 className="text-xs font-semibold text-stone-500 mb-2">Πελάτης</h4>
+              {linkedClient ? (
+                <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1.5 mb-2">
+                  {(() => {
+                    const TypeIcon = CLIENT_TYPE_ICONS[linkedClient.type]
+                    return <TypeIcon size={14} className="text-stone-400 shrink-0" />
+                  })()}
+                  <span className="text-sm truncate flex-1 min-w-0">{linkedClient.name}</span>
+                  <button
+                    onClick={onUnlinkClient}
+                    className="text-stone-300 hover:text-rose-600 text-xs shrink-0 inline-flex items-center gap-0.5"
+                  >
+                    <X size={12} />
+                    Αφαίρεση
+                  </button>
+                </div>
+              ) : (
+                <div className="text-xs text-stone-400 mb-2 flex items-center gap-1.5">
+                  <Briefcase size={13} />
+                  Δεν έχει οριστεί πελάτης για αυτό το έργο.
+                </div>
+              )}
+              <button
+                onClick={() => setShowClientPicker(true)}
+                className="w-full border border-stone-300 text-stone-700 rounded-xl py-2 font-medium text-sm inline-flex items-center justify-center gap-1.5"
+              >
+                <UserPlus size={15} />
+                {linkedClient ? 'Αλλαγή πελάτη' : 'Σύνδεση πελάτη'}
+              </button>
+            </div>
+
             <CollaboratorsSection
               onLoadCollaborators={onLoadCollaborators}
               onInvite={onInviteCollaborator}
@@ -323,6 +367,15 @@ export default function ProjectSettingsModal({
           </>
         )}
       </div>
+
+      {showClientPicker && (
+        <ClientPickerModal
+          clients={clients}
+          onClose={() => setShowClientPicker(false)}
+          onSelectExisting={onLinkClient}
+          onCreateAndLink={onCreateAndLinkClient}
+        />
+      )}
     </div>
   )
 }

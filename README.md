@@ -114,6 +114,19 @@ RLS-based access control entries already have (`security_invoker`, see
 the comment above it in schema.sql), so it needs no policy of its own and
 can't leak totals from a project you're not on.
 
+## Project budget and timeline
+
+Three optional fields, set at creation or any time after from Settings:
+**Αρχικός προϋπολογισμός** (an initial budget estimate, €), **Ημερομηνία
+έναρξης**, and **Ημερομηνία ολοκλήρωσης** (target completion). All three
+were genuinely new — the schema had no start date or any timeline field
+before this, checked directly rather than assumed. Shown on the project
+dashboard as a small neutral strip above the Έσοδα/Έξοδα cards, not
+folded into the Κέρδος/Ζημία hero stat itself (budget/timeline is
+context, not a profit figure) — and the strip renders nothing at all for
+a project that has none of the three set, rather than showing empty
+placeholders.
+
 ## Archiving a project
 
 A finished project shouldn't have to be deleted just to get it out of the
@@ -400,6 +413,45 @@ touch any other project, an editor cannot rename the project or add
 other collaborators, a viewer cannot write anything, and removing a
 collaborator revokes their access on their very next request — not just
 in their UI, and not only after they next log in.
+
+## Clients (Πελατολόγιο)
+
+A client is a real, reusable entity — not data copied onto each project.
+Add one once, then link it to as many projects as it's actually involved
+in over time, from either direction: the **Πελατολόγιο** tab (the people
+icon in the header, next to the account icon) for browsing/searching
+everyone you've ever added, or a project's own Settings → **Πελάτης**
+section for linking one to *this* project — either an existing one
+(search by name/ΑΦΜ) or a brand new one created inline. Both paths write
+to the exact same `clients` table; there's no separate per-project copy
+to drift out of sync.
+
+Two types, picked with the same filled-pill toggle used everywhere else
+in this app:
+- **Ιδιώτης** (individual): Όνομα, ΑΦΜ.
+- **Εταιρεία** (company): Επωνυμία, ΑΦΜ, ΓΕΜΗ, ΔΟΥ.
+
+Both types also get an address and email. Everything past the name/
+επωνυμία is optional — a client can be added with just a name and
+filled in later. Opening a client from the Πελατολόγιο list also shows
+every project it's currently linked to.
+
+A project has at most one linked client (`projects.client_id`); a client
+can be linked to any number of projects — a repeat customer's history
+lives in one place, not scattered across separate copies of their
+details on every job they've ever commissioned.
+
+RLS here mirrors projects exactly — owner: full control; a collaborator
+on a project a client is linked to: view-only, never write — and was
+adversarially tested the same way as the original data-isolation round
+(two real, unrelated accounts, real network calls against the live
+database): a second account genuinely cannot list, read, or write
+another user's clients, a genuine collaborator *can* see the client
+linked to a project they're on but still can't edit or delete it, and a
+project owner cannot point their own project's `client_id` at a client
+they don't own (closed as a real hole found while writing this, not a
+theoretical one — see the `owns_client()` comment in schema.sql for the
+exact attack this closes).
 
 ## Billing (Stripe — TEST MODE ONLY right now)
 
@@ -994,10 +1046,31 @@ src/
                                     "Διαγραφή" to delete (hidden entirely
                                     for viewer-role collaborators)
     NewProjectModal.jsx            "create project" bottom sheet
-    ProjectSettingsModal.jsx        owner: rename/relocate, archive/
-                                     restore, delete, CSV export, manage
-                                     collaborators. non-owner: CSV export
-                                     + role info only (gear icon in header)
+    ProjectSettingsModal.jsx        owner: rename/relocate, budget/
+                                     timeline, archive/restore, delete,
+                                     CSV export, manage collaborators,
+                                     link/change/remove the project's
+                                     client. non-owner: CSV export +
+                                     role info only (gear icon in header)
+    ProjectMeta.jsx                 the budget/timeline strip on the
+                                     project dashboard, see Project
+                                     budget and timeline above
+    ClientsTab.jsx                  Πελατολόγιο — every client you've
+                                     added, search by name/ΑΦΜ/address/
+                                     email, tap to open (people icon in
+                                     header), see Clients above
+    ClientModal.jsx                  create/edit a client from
+                                      Πελατολόγιο — also shows which
+                                      project(s) it's linked to
+    ClientPickerModal.jsx            reached from a project's Settings —
+                                      link an existing client (search) or
+                                      create one inline; same underlying
+                                      table either way
+    ClientFormFields.jsx             the Ιδιώτης/Εταιρεία fields shared
+                                      by ClientModal and
+                                      ClientPickerModal's inline-create,
+                                      so both entry points collect
+                                      exactly the same fields
     QuickAddModal.jsx              "add entry" bottom sheet — also handles
                                     editing an existing entry and
                                     attaching/removing its receipt photo
