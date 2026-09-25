@@ -1,4 +1,16 @@
-import { WifiOff, TriangleAlert, Trash2, Copy, ArrowUpCircle, Percent, Receipt, SearchX } from 'lucide-react'
+import { useState } from 'react'
+import {
+  WifiOff,
+  TriangleAlert,
+  Trash2,
+  Copy,
+  ArrowUpCircle,
+  Percent,
+  Receipt,
+  SearchX,
+  ChevronDown,
+  ChevronRight,
+} from 'lucide-react'
 import {
   CATEGORY_BADGE_STYLES,
   CATEGORY_ICONS,
@@ -170,6 +182,23 @@ export default function EntryList({
   areasById,
   groupByArea,
 }) {
+  // Which area sections are collapsed, by key ('none' for "Χωρίς
+  // περιοχή") — declared unconditionally up here, not inside the
+  // groupByArea branch below, since groupByArea itself can flip between
+  // renders (it's derived from the live filter state in App.jsx) and a
+  // hook can never be called conditionally. Starts empty (every folder
+  // open) — collapsing is something you do on purpose, not a default
+  // state that hides your own entries from you.
+  const [collapsedKeys, setCollapsedKeys] = useState(() => new Set())
+  function toggleGroup(key) {
+    setCollapsedKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
   if (entries.length === 0) {
     // Two genuinely different situations, given two different icons on
     // purpose — "nothing recorded yet" (an invitation to add the first
@@ -221,18 +250,29 @@ export default function EntryList({
         {orderedKeys.map((key) => {
           const items = groups.get(key)
           const label = key === 'none' ? 'Χωρίς περιοχή' : areasById.get(key).name
+          const open = !collapsedKeys.has(key)
           return (
             <div key={key} className="mb-4 last:mb-0">
-              <div className="flex items-center gap-1.5 mb-2">
-                {key !== 'none' && <AREA_ICON size={12} className="text-teal-700" />}
+              <button
+                onClick={() => toggleGroup(key)}
+                className="w-full flex items-center gap-1.5 mb-2 py-1 -my-1 text-left"
+              >
+                {open ? (
+                  <ChevronDown size={14} className="text-stone-400 shrink-0" />
+                ) : (
+                  <ChevronRight size={14} className="text-stone-400 shrink-0" />
+                )}
+                {key !== 'none' && <AREA_ICON size={12} className="text-teal-700 shrink-0" />}
                 <h4 className="text-xs font-semibold text-stone-500">{label}</h4>
                 <span className="text-xs text-stone-400">({items.length})</span>
-              </div>
-              <div className="space-y-2">
-                {items.map((e) => (
-                  <EntryRow key={e.id} e={e} {...rowProps} />
-                ))}
-              </div>
+              </button>
+              {open && (
+                <div className="space-y-2">
+                  {items.map((e) => (
+                    <EntryRow key={e.id} e={e} {...rowProps} />
+                  ))}
+                </div>
+              )}
             </div>
           )
         })}

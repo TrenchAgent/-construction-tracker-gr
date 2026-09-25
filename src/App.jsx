@@ -788,16 +788,7 @@ export default function App({ session, onSignOut }) {
 
           <MonthlyTrendChart entries={visibleEntries} projectCreatedAt={activeProject?.createdAt} />
 
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-display font-bold text-lg text-stone-800">Καταχωρήσεις</h3>
-            <button
-              onClick={() => setShowNewProject(true)}
-              className="btn-primary text-xs rounded-lg px-3 py-2 flex items-center gap-1"
-            >
-              <Plus size={13} />
-              Νέο έργο
-            </button>
-          </div>
+          <h3 className="font-display font-bold text-lg text-stone-800 mb-2">Καταχωρήσεις</h3>
 
           {visibleEntries.length > 0 && (
             <EntryFilterBar filters={filters} onChange={setFilters} areas={areas} />
