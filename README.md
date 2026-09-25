@@ -294,6 +294,31 @@ outstanding, time breakdown) always reflect the whole project, not just
 what's currently filtered into view — filtering narrows the list you're
 looking at, it doesn't recompute what the project actually adds up to.
 
+## Expense areas (Περιοχές / χώροι)
+
+A project can define its own set of area/room tags (e.g. "Μπάνιο",
+"Κουζίνα", "Υπνοδωμάτιο") — user-defined per project rather than a fixed
+list, since a custom-build project needs its own irregular set of areas.
+Manage them from project settings (add, rename, delete); managing them
+is open to any editor collaborator, not owner-only, since it's the same
+kind of edit as managing the entries themselves. An **expense** entry can
+optionally be tagged with one area (income entries never get one, the
+same way income never carries a material category); the tag shows as a
+badge on the entry, matching the category/status badge treatment.
+
+Deleting an area tag never errors or orphans the entries that had it —
+`entries.area_id` is `on delete set null` in the schema, so an entry just
+falls back to "no area," enforced by the database itself, not app logic.
+
+The entry list groups itself into per-area sections automatically once a
+project has any areas defined (each section sorted alphabetically, with a
+"Χωρίς περιοχή" section last for anything untagged) — this only kicks in
+when it's actually useful: filtering the list down to one specific area
+(see "Filtering the entry list" above) collapses it back to a plain flat
+list, since a single section header would just repeat what's already
+obvious. A project with no areas defined never shows any of this — no
+empty filter option, no picker, no group headers.
+
 ## Payment tracking and time breakdown
 
 Every entry has a payment status — **Εκκρεμεί** (pending), **Μερική
@@ -1040,18 +1065,28 @@ src/
                                     μήνα income+expense breakdown
     MonthlyTrendChart.jsx           income vs. expense bar chart by
                                      month, see Monthly trend chart above
-    EntryFilterBar.jsx              search + category/status/date-range
-                                     filter panel above the entry list
+    EntryFilterBar.jsx              search + category/status/area/
+                                     date-range filter panel above the
+                                     entry list — the area select only
+                                     appears once the project has any
+                                     area tags, see Expense areas above
     EntryList.jsx                  the entry list — tap a row to edit,
                                     "Διαγραφή" to delete (hidden entirely
-                                    for viewer-role collaborators)
+                                    for viewer-role collaborators). Groups
+                                    itself into per-area sections once the
+                                    project has areas and the list isn't
+                                    already filtered to one, see Expense
+                                    areas above
     NewProjectModal.jsx            "create project" bottom sheet
     ProjectSettingsModal.jsx        owner: rename/relocate, budget/
                                      timeline, archive/restore, delete,
                                      CSV export, manage collaborators,
                                      link/change/remove the project's
-                                     client. non-owner: CSV export +
-                                     role info only (gear icon in header)
+                                     client. owner or editor: manage the
+                                     project's area tags (add/rename/
+                                     delete), see Expense areas above.
+                                     non-owner viewer: CSV export + role
+                                     info only (gear icon in header)
     ProjectMeta.jsx                 the budget/timeline strip on the
                                      project dashboard, see Project
                                      budget and timeline above
@@ -1072,8 +1107,10 @@ src/
                                       so both entry points collect
                                       exactly the same fields
     QuickAddModal.jsx              "add entry" bottom sheet — also handles
-                                    editing an existing entry and
-                                    attaching/removing its receipt photo
+                                    editing an existing entry, an optional
+                                    area picker for expense entries (see
+                                    Expense areas above), and attaching/
+                                    removing its receipt photo
     OptionPill.jsx                  shared filled icon+label pill for
                                      every picker (kind, category,
                                      status, method, collaborator role)

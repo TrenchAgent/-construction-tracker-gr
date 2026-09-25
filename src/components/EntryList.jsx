@@ -20,7 +20,156 @@ import EmptyMoment from './EmptyMoment'
 // different, slightly-mismatched icon set sitting right next to them.
 const BADGE_ICON_SIZE = 11
 
-export default function EntryList({ entries, filtersActive, canEdit, onEdit, onDuplicate, onDelete, areasById }) {
+function EntryRow({ e, canEdit, onEdit, onDuplicate, onDelete, areasById }) {
+  // A not-yet-synced (or failed-to-sync) entry only exists locally —
+  // there's no real row to edit yet, so tapping it to open the edit
+  // form isn't offered. Deleting it is still fine either way (see
+  // App.jsx's deleteEntry): that just drops it from the local queue.
+  const rowCanEdit = canEdit && !e.pendingSync && !e.syncFailed
+  const CategoryIcon = CATEGORY_ICONS[e.category]
+  const StatusIcon = PAYMENT_STATUS_ICONS[e.paymentStatus]
+  const MethodIcon = PAYMENT_METHOD_ICONS[e.paymentMethod]
+  // A stale/deleted area (or one from a project this entry no longer
+  // resolves against) just isn't in the map — the badge quietly
+  // doesn't render rather than showing a broken reference or
+  // throwing. Same "don't let it error" fallback as everywhere else
+  // an id gets looked up client-side in this app.
+  const area = e.areaId ? areasById.get(e.areaId) : null
+  const details = (
+    <>
+      <div className="flex items-center gap-2 mb-1 flex-wrap">
+        {e.kind === 'expense' ? (
+          <span
+            className={
+              'text-[11px] px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1 ' +
+              (CATEGORY_BADGE_STYLES[e.category] || 'bg-stone-200 text-stone-700')
+            }
+          >
+            {CategoryIcon && <CategoryIcon size={BADGE_ICON_SIZE} />}
+            {e.category}
+          </span>
+        ) : (
+          <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-900 inline-flex items-center gap-1">
+            <ArrowUpCircle size={BADGE_ICON_SIZE} />
+            Είσπραξη
+          </span>
+        )}
+        {area && (
+          <span
+            className={
+              'text-[11px] px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1 ' +
+              AREA_BADGE_STYLE
+            }
+          >
+            <AREA_ICON size={BADGE_ICON_SIZE} />
+            {area.name}
+          </span>
+        )}
+        {e.vat && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 inline-flex items-center gap-1">
+            <Percent size={BADGE_ICON_SIZE} />
+            με ΦΠΑ
+          </span>
+        )}
+        {e.paymentMethod && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 inline-flex items-center gap-1">
+            {MethodIcon && <MethodIcon size={BADGE_ICON_SIZE} />}
+            {PAYMENT_METHOD_LABELS[e.paymentMethod] || e.paymentMethod}
+          </span>
+        )}
+        {e.paymentStatus && (
+          <span
+            className={
+              'text-[11px] px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1 ' +
+              (PAYMENT_STATUS_BADGE_STYLES[e.paymentStatus] || 'bg-stone-100 text-stone-500')
+            }
+          >
+            {StatusIcon && <StatusIcon size={BADGE_ICON_SIZE} />}
+            {PAYMENT_STATUS_LABELS[e.paymentStatus] || e.paymentStatus}
+          </span>
+        )}
+        {e.pendingSync && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 inline-flex items-center gap-1">
+            <WifiOff size={BADGE_ICON_SIZE} />
+            θα συγχρονιστεί όταν επανέλθει το δίκτυο
+          </span>
+        )}
+        {e.syncFailed && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 inline-flex items-center gap-1">
+            <TriangleAlert size={BADGE_ICON_SIZE} />
+            απέτυχε η αποστολή
+          </span>
+        )}
+      </div>
+      <div className="text-sm truncate">{e.note}</div>
+      <div className="text-xs text-stone-400 mt-0.5">
+        {e.vendor ? e.vendor + ' · ' : ''}
+        {e.date}
+      </div>
+    </>
+  )
+  return (
+    <div className="bg-white rounded-xl p-3 flex items-start gap-3 shadow-card">
+      {e.receiptPath && <ReceiptThumbnail path={e.receiptPath} />}
+      {rowCanEdit ? (
+        <button onClick={() => onEdit(e)} className="flex-1 min-w-0 text-left">
+          {details}
+        </button>
+      ) : (
+        <div className="flex-1 min-w-0">{details}</div>
+      )}
+      <div className="text-right shrink-0">
+        {/* Darker + bolder than a typical amount display on purpose
+            — the single most important number on this row, and the
+            one most often read outdoors in direct sunlight. */}
+        <div
+          className={
+            'font-display font-bold text-lg tabular-nums ' +
+            (e.kind === 'income' ? 'text-emerald-800' : 'text-rose-800')
+          }
+        >
+          {e.kind === 'income' ? '+' : '-'}
+          {formatEUR(e.amount)}
+        </div>
+        {canEdit && (
+          <div className="flex items-center gap-1 justify-end mt-1 -mr-1.5">
+            <button
+              onClick={() => onDuplicate(e)}
+              className="text-stone-500 hover:text-rust-700 active:bg-stone-100 text-xs inline-flex items-center gap-1 py-2.5 px-1.5 rounded-lg"
+            >
+              <Copy size={13} />
+              Αντιγραφή
+            </button>
+            <button
+              onClick={() => {
+                const confirmed = window.confirm(
+                  `Διαγραφή της καταχώρησης «${e.note}» (${formatEUR(e.amount)}); ` +
+                    'Μπορείτε να την αναιρέσετε για λίγα δευτερόλεπτα μετά.',
+                )
+                if (confirmed) onDelete(e.id)
+              }}
+              className="text-stone-500 hover:text-rose-600 active:bg-stone-100 text-xs inline-flex items-center gap-1 py-2.5 px-1.5 rounded-lg"
+            >
+              <Trash2 size={13} />
+              Διαγραφή
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default function EntryList({
+  entries,
+  filtersActive,
+  canEdit,
+  onEdit,
+  onDuplicate,
+  onDelete,
+  areasById,
+  groupByArea,
+}) {
   if (entries.length === 0) {
     // Two genuinely different situations, given two different icons on
     // purpose — "nothing recorded yet" (an invitation to add the first
@@ -38,150 +187,62 @@ export default function EntryList({ entries, filtersActive, canEdit, onEdit, onD
     )
   }
 
+  const rowProps = { canEdit, onEdit, onDuplicate, onDelete, areasById }
+
+  if (groupByArea) {
+    // Bucket by area, preserving each entry's existing (newest-first)
+    // relative order within its bucket. areasById already iterates in
+    // alphabetical order (App.jsx builds it from storage.getProjectAreas'
+    // own "order by name" query) — reused here as the section order
+    // instead of re-sorting, so this list and the filter/settings
+    // dropdowns never disagree about area ordering.
+    const groups = new Map()
+    for (const e of entries) {
+      const key = e.areaId && areasById.get(e.areaId) ? e.areaId : 'none'
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key).push(e)
+    }
+    const orderedKeys = [...areasById.keys()].filter((id) => groups.has(id))
+    // "Χωρίς περιοχή" (unassigned — every income entry, plus any expense
+    // nobody tagged) is a catch-all, not a real area, so it always sorts
+    // last rather than joining the alphabetical order above.
+    if (groups.has('none')) orderedKeys.push('none')
+
+    // Everything landed in exactly one bucket (e.g. nothing in this
+    // filtered view is tagged yet) — a single section header would just
+    // repeat what the list already obviously is. Falls through to the
+    // plain flat render below instead of adding noise for no reason.
+    if (orderedKeys.length > 1) {
+      return (
+        <div>
+          {orderedKeys.map((key) => {
+            const items = groups.get(key)
+            const label = key === 'none' ? 'Χωρίς περιοχή' : areasById.get(key).name
+            return (
+              <div key={key} className="mb-4 last:mb-0">
+                <div className="flex items-center gap-1.5 mb-2">
+                  {key !== 'none' && <AREA_ICON size={12} className="text-teal-700" />}
+                  <h4 className="text-xs font-semibold text-stone-500">{label}</h4>
+                  <span className="text-xs text-stone-400">({items.length})</span>
+                </div>
+                <div className="space-y-2">
+                  {items.map((e) => (
+                    <EntryRow key={e.id} e={e} {...rowProps} />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+  }
+
   return (
     <div className="space-y-2">
-      {entries.map((e) => {
-        // A not-yet-synced (or failed-to-sync) entry only exists locally —
-        // there's no real row to edit yet, so tapping it to open the edit
-        // form isn't offered. Deleting it is still fine either way (see
-        // App.jsx's deleteEntry): that just drops it from the local queue.
-        const rowCanEdit = canEdit && !e.pendingSync && !e.syncFailed
-        const CategoryIcon = CATEGORY_ICONS[e.category]
-        const StatusIcon = PAYMENT_STATUS_ICONS[e.paymentStatus]
-        const MethodIcon = PAYMENT_METHOD_ICONS[e.paymentMethod]
-        // A stale/deleted area (or one from a project this entry no longer
-        // resolves against) just isn't in the map — the badge quietly
-        // doesn't render rather than showing a broken reference or
-        // throwing. Same "don't let it error" fallback as everywhere else
-        // an id gets looked up client-side in this app.
-        const area = e.areaId ? areasById.get(e.areaId) : null
-        const details = (
-          <>
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              {e.kind === 'expense' ? (
-                <span
-                  className={
-                    'text-[11px] px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1 ' +
-                    (CATEGORY_BADGE_STYLES[e.category] || 'bg-stone-200 text-stone-700')
-                  }
-                >
-                  {CategoryIcon && <CategoryIcon size={BADGE_ICON_SIZE} />}
-                  {e.category}
-                </span>
-              ) : (
-                <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-900 inline-flex items-center gap-1">
-                  <ArrowUpCircle size={BADGE_ICON_SIZE} />
-                  Είσπραξη
-                </span>
-              )}
-              {area && (
-                <span
-                  className={
-                    'text-[11px] px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1 ' +
-                    AREA_BADGE_STYLE
-                  }
-                >
-                  <AREA_ICON size={BADGE_ICON_SIZE} />
-                  {area.name}
-                </span>
-              )}
-              {e.vat && (
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 inline-flex items-center gap-1">
-                  <Percent size={BADGE_ICON_SIZE} />
-                  με ΦΠΑ
-                </span>
-              )}
-              {e.paymentMethod && (
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 inline-flex items-center gap-1">
-                  {MethodIcon && <MethodIcon size={BADGE_ICON_SIZE} />}
-                  {PAYMENT_METHOD_LABELS[e.paymentMethod] || e.paymentMethod}
-                </span>
-              )}
-              {e.paymentStatus && (
-                <span
-                  className={
-                    'text-[11px] px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1 ' +
-                    (PAYMENT_STATUS_BADGE_STYLES[e.paymentStatus] || 'bg-stone-100 text-stone-500')
-                  }
-                >
-                  {StatusIcon && <StatusIcon size={BADGE_ICON_SIZE} />}
-                  {PAYMENT_STATUS_LABELS[e.paymentStatus] || e.paymentStatus}
-                </span>
-              )}
-              {e.pendingSync && (
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 inline-flex items-center gap-1">
-                  <WifiOff size={BADGE_ICON_SIZE} />
-                  θα συγχρονιστεί όταν επανέλθει το δίκτυο
-                </span>
-              )}
-              {e.syncFailed && (
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 inline-flex items-center gap-1">
-                  <TriangleAlert size={BADGE_ICON_SIZE} />
-                  απέτυχε η αποστολή
-                </span>
-              )}
-            </div>
-            <div className="text-sm truncate">{e.note}</div>
-            <div className="text-xs text-stone-400 mt-0.5">
-              {e.vendor ? e.vendor + ' · ' : ''}
-              {e.date}
-            </div>
-          </>
-        )
-        return (
-          <div
-            key={e.id}
-            className="bg-white rounded-xl p-3 flex items-start gap-3 shadow-card"
-          >
-            {e.receiptPath && <ReceiptThumbnail path={e.receiptPath} />}
-            {rowCanEdit ? (
-              <button onClick={() => onEdit(e)} className="flex-1 min-w-0 text-left">
-                {details}
-              </button>
-            ) : (
-              <div className="flex-1 min-w-0">{details}</div>
-            )}
-            <div className="text-right shrink-0">
-              {/* Darker + bolder than a typical amount display on purpose
-                  — the single most important number on this row, and the
-                  one most often read outdoors in direct sunlight. */}
-              <div
-                className={
-                  'font-display font-bold text-lg tabular-nums ' +
-                  (e.kind === 'income' ? 'text-emerald-800' : 'text-rose-800')
-                }
-              >
-                {e.kind === 'income' ? '+' : '-'}
-                {formatEUR(e.amount)}
-              </div>
-              {canEdit && (
-                <div className="flex items-center gap-1 justify-end mt-1 -mr-1.5">
-                  <button
-                    onClick={() => onDuplicate(e)}
-                    className="text-stone-500 hover:text-rust-700 active:bg-stone-100 text-xs inline-flex items-center gap-1 py-2.5 px-1.5 rounded-lg"
-                  >
-                    <Copy size={13} />
-                    Αντιγραφή
-                  </button>
-                  <button
-                    onClick={() => {
-                      const confirmed = window.confirm(
-                        `Διαγραφή της καταχώρησης «${e.note}» (${formatEUR(e.amount)}); ` +
-                          'Μπορείτε να την αναιρέσετε για λίγα δευτερόλεπτα μετά.',
-                      )
-                      if (confirmed) onDelete(e.id)
-                    }}
-                    className="text-stone-500 hover:text-rose-600 active:bg-stone-100 text-xs inline-flex items-center gap-1 py-2.5 px-1.5 rounded-lg"
-                  >
-                    <Trash2 size={13} />
-                    Διαγραφή
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )
-      })}
+      {entries.map((e) => (
+        <EntryRow key={e.id} e={e} {...rowProps} />
+      ))}
     </div>
   )
 }

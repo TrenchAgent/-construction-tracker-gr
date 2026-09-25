@@ -811,6 +811,10 @@ export default function App({ session, onSignOut }) {
             onDuplicate={openDuplicateEntry}
             onDelete={deleteEntry}
             areasById={areasById}
+            // Grouping only adds clarity when there's something to split
+            // across — no point once the list is already narrowed to one
+            // specific area via the filter bar itself.
+            groupByArea={areas.length > 0 && !filters.area}
           />
         </div>
       )}
