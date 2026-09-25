@@ -208,34 +208,36 @@ export default function EntryList({
     // last rather than joining the alphabetical order above.
     if (groups.has('none')) orderedKeys.push('none')
 
-    // Everything landed in exactly one bucket (e.g. nothing in this
-    // filtered view is tagged yet) — a single section header would just
-    // repeat what the list already obviously is. Falls through to the
-    // plain flat render below instead of adding noise for no reason.
-    if (orderedKeys.length > 1) {
-      return (
-        <div>
-          {orderedKeys.map((key) => {
-            const items = groups.get(key)
-            const label = key === 'none' ? 'Χωρίς περιοχή' : areasById.get(key).name
-            return (
-              <div key={key} className="mb-4 last:mb-0">
-                <div className="flex items-center gap-1.5 mb-2">
-                  {key !== 'none' && <AREA_ICON size={12} className="text-teal-700" />}
-                  <h4 className="text-xs font-semibold text-stone-500">{label}</h4>
-                  <span className="text-xs text-stone-400">({items.length})</span>
-                </div>
-                <div className="space-y-2">
-                  {items.map((e) => (
-                    <EntryRow key={e.id} e={e} {...rowProps} />
-                  ))}
-                </div>
+    // Always shown as labeled sections when grouping is on, even if
+    // everything currently lands in exactly one bucket — a project fully
+    // tagged into a single area (or with only one area defined so far)
+    // is still a real, meaningful "this is the Μπάνιο folder" moment, not
+    // noise to collapse away. (An earlier version suppressed the header
+    // here, reasoning a single section was redundant — wrong call: found
+    // by a real user whose project was fully tagged into one area and
+    // expected to see it labeled as such regardless.)
+    return (
+      <div>
+        {orderedKeys.map((key) => {
+          const items = groups.get(key)
+          const label = key === 'none' ? 'Χωρίς περιοχή' : areasById.get(key).name
+          return (
+            <div key={key} className="mb-4 last:mb-0">
+              <div className="flex items-center gap-1.5 mb-2">
+                {key !== 'none' && <AREA_ICON size={12} className="text-teal-700" />}
+                <h4 className="text-xs font-semibold text-stone-500">{label}</h4>
+                <span className="text-xs text-stone-400">({items.length})</span>
               </div>
-            )
-          })}
-        </div>
-      )
-    }
+              <div className="space-y-2">
+                {items.map((e) => (
+                  <EntryRow key={e.id} e={e} {...rowProps} />
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
   }
 
   return (
