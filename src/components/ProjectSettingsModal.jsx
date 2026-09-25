@@ -1,10 +1,23 @@
 import { useEffect, useState } from 'react'
-import { X, Archive, ArchiveRestore, FileDown, Trash2, UserPlus, Users, Briefcase } from 'lucide-react'
+import {
+  X,
+  Archive,
+  ArchiveRestore,
+  FileDown,
+  Trash2,
+  UserPlus,
+  Users,
+  Briefcase,
+  Pencil,
+  Check,
+  Plus,
+} from 'lucide-react'
 import {
   COLLABORATOR_ROLES,
   COLLABORATOR_ROLE_LABELS,
   COLLABORATOR_ROLE_ICONS,
   CLIENT_TYPE_ICONS,
+  AREA_ICON,
 } from '../constants'
 import OptionPill from './OptionPill'
 import ClientPickerModal from './ClientPickerModal'
@@ -137,6 +150,173 @@ function CollaboratorsSection({ onLoadCollaborators, onInvite, onRemove }) {
   )
 }
 
+// Add/rename/delete area tags for this project — deliberately open to any
+// editor, not owner-only like CollaboratorsSection/client-linking above:
+// an editor already manages entries directly (see schema.sql's entries
+// policy), and the tags entries are organized by are the same kind of
+// edit, not membership/ownership control. `areas` is already-loaded
+// state from the parent (unlike CollaboratorsSection's own useEffect
+// fetch) because, unlike collaborators, areas are also needed elsewhere
+// — the filter bar, entry badges, the quick-add picker — so App.jsx
+// loads them once per active project rather than this section fetching
+// its own private copy.
+function AreasSection({ areas, onAdd, onRename, onDelete }) {
+  const [name, setName] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [editName, setEditName] = useState('')
+
+  async function handleAdd() {
+    if (!name.trim()) {
+      setError('Δώστε όνομα περιοχής')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      await onAdd(name.trim())
+      setName('')
+    } catch (err) {
+      // Postgres unique-violation code for the case-insensitive
+      // (project_id, lower(name)) constraint.
+      if (err.code === '23505') {
+        setError('Αυτή η περιοχή υπάρχει ήδη')
+      } else {
+        setError(err.message || 'Κάτι πήγε στραβά, δοκιμάστε ξανά')
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function startEdit(area) {
+    setEditingId(area.id)
+    setEditName(area.name)
+    setError('')
+  }
+
+  async function handleRename(id) {
+    if (!editName.trim()) return
+    setBusy(true)
+    setError('')
+    try {
+      await onRename(id, editName.trim())
+      setEditingId(null)
+    } catch (err) {
+      if (err.code === '23505') {
+        setError('Αυτή η περιοχή υπάρχει ήδη')
+      } else {
+        setError(err.message || 'Κάτι πήγε στραβά, δοκιμάστε ξανά')
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Confirmed up front, then immediate (no undo window like entries/
+  // projects/clients) — deleting an area tag has a real but small,
+  // easily-explained effect (existing entries just lose that one label,
+  // nothing about the entry itself changes — see schema.sql's "on delete
+  // set null"), so saying that plainly before it happens is enough; it
+  // doesn't need the heavier 5-second-hold machinery those bigger
+  // deletions get.
+  function handleDelete(area) {
+    const confirmed = window.confirm(
+      `Διαγραφή της περιοχής «${area.name}»; Οι καταχωρήσεις που την έχουν δεν θα διαγραφούν — ` +
+        'απλώς δεν θα έχουν πια αυτή την ετικέτα.',
+    )
+    if (!confirmed) return
+    onDelete(area.id)
+  }
+
+  return (
+    <div className="mb-4 pt-4 border-t border-stone-200">
+      <h4 className="text-xs font-semibold text-stone-500 mb-2">Περιοχές / χώροι</h4>
+
+      {areas.length === 0 ? (
+        <div className="text-xs text-stone-400 mb-2 flex items-center gap-1.5">
+          <AREA_ICON size={13} />
+          Δεν έχετε προσθέσει περιοχές ακόμα.
+        </div>
+      ) : (
+        <div className="space-y-1.5 mb-3">
+          {areas.map((a) => (
+            <div
+              key={a.id}
+              className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1.5"
+            >
+              {editingId === a.id ? (
+                <>
+                  <input
+                    autoFocus
+                    className="flex-1 min-w-0 border border-stone-300 rounded-lg px-2 py-1 text-sm"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRename(a.id)}
+                  />
+                  <button
+                    onClick={() => handleRename(a.id)}
+                    disabled={busy}
+                    className="text-rust-700 shrink-0 disabled:opacity-60 p-1"
+                    aria-label="Αποθήκευση"
+                  >
+                    <Check size={14} />
+                  </button>
+                  <button
+                    onClick={() => setEditingId(null)}
+                    className="text-stone-400 shrink-0 p-1"
+                    aria-label="Ακύρωση"
+                  >
+                    <X size={14} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="text-sm truncate flex-1 min-w-0">{a.name}</span>
+                  <button
+                    onClick={() => startEdit(a)}
+                    className="text-stone-300 hover:text-rust-700 shrink-0 p-1"
+                    aria-label="Μετονομασία"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(a)}
+                    className="text-stone-300 hover:text-rose-600 shrink-0 p-1"
+                    aria-label="Διαγραφή"
+                  >
+                    <X size={14} />
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        <input
+          className="flex-1 min-w-0 border border-stone-300 rounded-lg px-3 py-2 text-sm"
+          placeholder="π.χ. Μπάνιο"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+        />
+        <button
+          onClick={handleAdd}
+          disabled={busy}
+          className="border border-stone-300 text-stone-700 rounded-xl px-3 py-2 text-sm shrink-0 disabled:opacity-60 inline-flex items-center gap-1"
+          aria-label="Προσθήκη περιοχής"
+        >
+          <Plus size={15} />
+        </button>
+      </div>
+      {error && <div className="text-xs text-rose-600 mt-2">{error}</div>}
+    </div>
+  )
+}
+
 export default function ProjectSettingsModal({
   project,
   onClose,
@@ -152,8 +332,16 @@ export default function ProjectSettingsModal({
   onLinkClient,
   onCreateAndLinkClient,
   onUnlinkClient,
+  areas,
+  onAddArea,
+  onRenameArea,
+  onDeleteArea,
 }) {
   const isOwner = project.role === 'owner'
+  // Areas are entry-organizing metadata, not project/membership control —
+  // same access as entries themselves (owner or editor), not the
+  // owner-only bar the client link and collaborator list below are held to.
+  const canManageAreas = project.role !== 'viewer'
   const isArchived = Boolean(project.archivedAt)
   const [showClientPicker, setShowClientPicker] = useState(false)
   const [name, setName] = useState(project.name)
@@ -305,6 +493,10 @@ export default function ProjectSettingsModal({
           <FileDown size={15} />
           Εξαγωγή καταχωρήσεων (CSV)
         </button>
+
+        {canManageAreas && (
+          <AreasSection areas={areas} onAdd={onAddArea} onRename={onRenameArea} onDelete={onDeleteArea} />
+        )}
 
         {isOwner && (
           <button

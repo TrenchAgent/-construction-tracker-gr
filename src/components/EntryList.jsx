@@ -7,6 +7,8 @@ import {
   PAYMENT_STATUS_ICONS,
   PAYMENT_METHOD_LABELS,
   PAYMENT_METHOD_ICONS,
+  AREA_BADGE_STYLE,
+  AREA_ICON,
 } from '../constants'
 import { formatEUR } from '../lib/format'
 import ReceiptThumbnail from './ReceiptThumbnail'
@@ -18,7 +20,7 @@ import EmptyMoment from './EmptyMoment'
 // different, slightly-mismatched icon set sitting right next to them.
 const BADGE_ICON_SIZE = 11
 
-export default function EntryList({ entries, filtersActive, canEdit, onEdit, onDuplicate, onDelete }) {
+export default function EntryList({ entries, filtersActive, canEdit, onEdit, onDuplicate, onDelete, areasById }) {
   if (entries.length === 0) {
     // Two genuinely different situations, given two different icons on
     // purpose — "nothing recorded yet" (an invitation to add the first
@@ -47,6 +49,12 @@ export default function EntryList({ entries, filtersActive, canEdit, onEdit, onD
         const CategoryIcon = CATEGORY_ICONS[e.category]
         const StatusIcon = PAYMENT_STATUS_ICONS[e.paymentStatus]
         const MethodIcon = PAYMENT_METHOD_ICONS[e.paymentMethod]
+        // A stale/deleted area (or one from a project this entry no longer
+        // resolves against) just isn't in the map — the badge quietly
+        // doesn't render rather than showing a broken reference or
+        // throwing. Same "don't let it error" fallback as everywhere else
+        // an id gets looked up client-side in this app.
+        const area = e.areaId ? areasById.get(e.areaId) : null
         const details = (
           <>
             <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -64,6 +72,17 @@ export default function EntryList({ entries, filtersActive, canEdit, onEdit, onD
                 <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-900 inline-flex items-center gap-1">
                   <ArrowUpCircle size={BADGE_ICON_SIZE} />
                   Είσπραξη
+                </span>
+              )}
+              {area && (
+                <span
+                  className={
+                    'text-[11px] px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1 ' +
+                    AREA_BADGE_STYLE
+                  }
+                >
+                  <AREA_ICON size={BADGE_ICON_SIZE} />
+                  {area.name}
                 </span>
               )}
               {e.vat && (

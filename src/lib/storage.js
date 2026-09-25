@@ -55,7 +55,12 @@ function mapEntry(row) {
     paymentStatus: row.payment_status,
     paymentMethod: row.payment_method || '',
     receiptPath: row.receipt_path || '',
+    areaId: row.area_id || null,
   }
+}
+
+function mapProjectArea(row) {
+  return { id: row.id, name: row.name, projectId: row.project_id, createdAt: row.created_at }
 }
 
 const RECEIPTS_BUCKET = 'receipts'
@@ -216,6 +221,7 @@ export async function addEntry(projectId, entry) {
       date: entry.date,
       payment_status: entry.paymentStatus,
       payment_method: entry.paymentMethod || null,
+      area_id: entry.areaId || null,
     })
     .select()
     .single()
@@ -236,6 +242,7 @@ export async function updateEntry(id, entry) {
       date: entry.date,
       payment_status: entry.paymentStatus,
       payment_method: entry.paymentMethod || null,
+      area_id: entry.areaId || null,
     })
     .eq('id', id)
     .select()
@@ -433,4 +440,52 @@ export async function setProjectClient(projectId, clientId) {
     .single()
   if (error) throw error
   return mapProject(data)
+}
+
+// ---------------------------------------------------------------------
+// Project areas — expense categorization by area/room (supabase/
+// schema.sql's `project_areas` table). Deliberately user-defined per
+// project rather than a fixed list, and scoped to that one project —
+// unlike clients (owned per-user, reusable across projects), an area tag
+// only ever makes sense within the project it was created for.
+// ---------------------------------------------------------------------
+
+export async function getProjectAreas(projectId) {
+  if (!projectId) return []
+  const { data, error } = await supabase
+    .from('project_areas')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('name', { ascending: true })
+  if (error) throw error
+  return data.map(mapProjectArea)
+}
+
+export async function addProjectArea(projectId, name) {
+  const { data, error } = await supabase
+    .from('project_areas')
+    .insert({ project_id: projectId, name })
+    .select()
+    .single()
+  if (error) throw error
+  return mapProjectArea(data)
+}
+
+export async function renameProjectArea(id, name) {
+  const { data, error } = await supabase
+    .from('project_areas')
+    .update({ name })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return mapProjectArea(data)
+}
+
+// The FK's on delete set null (schema.sql) clears area_id server-side on
+// any entry that had this tag — nothing else to clean up here, same
+// "just delete the row" shape as deleteClient.
+export async function deleteProjectArea(id) {
+  const { error } = await supabase.from('project_areas').delete().eq('id', id)
+  if (error) throw error
 }

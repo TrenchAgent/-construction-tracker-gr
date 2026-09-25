@@ -13,6 +13,7 @@ import {
   Pencil,
   User,
   Building2,
+  MapPin,
 } from 'lucide-react'
 
 // Expense categories are deliberately kept to exactly these three — see the
@@ -133,3 +134,12 @@ export const CLIENT_TYPE_ICONS = {
   individual: User,
   company: Building2,
 }
+
+// Area/room tags (e.g. "Μπάνιο", "Κουζίνα") are user-defined per project,
+// not a fixed set — so unlike CATEGORY_BADGE_STYLES above there's no
+// per-value color map to build (there's no fixed list of values to map).
+// Every area gets the same badge treatment instead, the same "one fixed
+// style regardless of which value" shape as the Είσπραξη badge in
+// EntryList.
+export const AREA_BADGE_STYLE = 'bg-teal-100 text-teal-900'
+export const AREA_ICON = MapPin

@@ -99,6 +99,11 @@ export default function App({ session, onSignOut }) {
   const [clients, setClients] = useState([])
   const [showClientModal, setShowClientModal] = useState(false)
   const [editingClient, setEditingClient] = useState(null)
+  // The active project's area/room tags (supabase/schema.sql's
+  // project_areas) — loaded alongside its entries in switchProject below,
+  // same "per-project, refetched on switch" shape as entries itself,
+  // unlike clients (per-user, loaded once at sign-in).
+  const [areas, setAreas] = useState([])
   const [summaries, setSummaries] = useState(new Map())
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   // { kind: 'entry' | 'project', id, label, timeoutId } | null — see
@@ -265,13 +270,15 @@ export default function App({ session, onSignOut }) {
     setShowClients(false)
     setFilters(EMPTY_FILTERS) // a filter set on one project isn't likely to mean anything on another
     try {
-      const fresh = await storage.getEntries(id)
+      const [fresh, projectAreas] = await Promise.all([storage.getEntries(id), storage.getProjectAreas(id)])
       setEntries(mergeQueuedIntoEntries(id, fresh))
+      setAreas(projectAreas)
     } catch (err) {
       // Can't reach the server for this project's real entries (e.g. no
       // connection right now) — still show whatever's queued locally for
       // it rather than an empty list, since those are real, just unsynced.
       setEntries(mergeQueuedIntoEntries(id, []))
+      setAreas([])
       setError(err.message || 'Σφάλμα φόρτωσης καταχωρήσεων')
     }
   }
@@ -355,6 +362,38 @@ export default function App({ session, onSignOut }) {
   async function unlinkClient() {
     const saved = await storage.setProjectClient(activeId, null)
     setProjects((list) => list.map((p) => (p.id === saved.id ? { ...saved, role: p.role } : p)))
+  }
+
+  // Throws on failure — AreasSection (ProjectSettingsModal) displays it,
+  // including the Postgres unique-violation code for a duplicate name.
+  async function addProjectArea(name) {
+    const area = await storage.addProjectArea(activeId, name)
+    setAreas((list) => [...list, area].sort((a, b) => a.name.localeCompare(b.name, 'el')))
+  }
+
+  async function renameProjectArea(id, name) {
+    const saved = await storage.renameProjectArea(id, name)
+    setAreas((list) => list.map((a) => (a.id === id ? saved : a)).sort((a, b) => a.name.localeCompare(b.name, 'el')))
+  }
+
+  // Confirmation already happened in AreasSection, which calls this
+  // without awaiting it (it's a fire-and-forget click, not a form submit
+  // with its own inline error slot) — so unlike the rest of this file,
+  // this one catches its own failure and surfaces it on the app-level
+  // error banner rather than leaving a rejected promise nobody handles.
+  // Immediate, not deferred like startPendingDelete's undo window — see
+  // AreasSection's own comment for why. The FK's on delete set null
+  // (schema.sql) clears area_id server-side on any entry that had this
+  // tag; mirror that locally so an entry list open right now doesn't keep
+  // showing a badge for an area that no longer exists.
+  async function deleteProjectArea(id) {
+    try {
+      await storage.deleteProjectArea(id)
+      setAreas((list) => list.filter((a) => a.id !== id))
+      setEntries((list) => list.map((e) => (e.areaId === id ? { ...e, areaId: null } : e)))
+    } catch (err) {
+      setError(err.message || 'Η διαγραφή απέτυχε')
+    }
   }
 
   // Same contract: throws on failure, QuickAddModal displays it. Handles
@@ -576,7 +615,7 @@ export default function App({ session, onSignOut }) {
   }
 
   function exportCsv() {
-    const csv = entriesToCsv(visibleEntries)
+    const csv = entriesToCsv(visibleEntries, areasById)
     const today = new Date().toISOString().slice(0, 10)
     downloadCsv(`${slugifyFilename(activeProject.name)}-${today}.csv`, csv)
   }
@@ -643,6 +682,10 @@ export default function App({ session, onSignOut }) {
   const linkedClient = activeProject?.clientId
     ? visibleClients.find((c) => c.id === activeProject.clientId) || null
     : null
+  // Built once per render rather than looked up with .find() per entry —
+  // EntryList does one lookup per row, and a plain array scan for that
+  // would be quadratic in the entry count for no reason.
+  const areasById = new Map(areas.map((a) => [a.id, a]))
   // Filtering only narrows what's shown in the list below — the totals
   // above (income/expense/profit/pending, time breakdown) always reflect
   // the whole project, not just whatever's currently filtered into view.
@@ -756,7 +799,9 @@ export default function App({ session, onSignOut }) {
             </button>
           </div>
 
-          {visibleEntries.length > 0 && <EntryFilterBar filters={filters} onChange={setFilters} />}
+          {visibleEntries.length > 0 && (
+            <EntryFilterBar filters={filters} onChange={setFilters} areas={areas} />
+          )}
 
           <EntryList
             entries={filteredEntries}
@@ -765,6 +810,7 @@ export default function App({ session, onSignOut }) {
             onEdit={openEditEntry}
             onDuplicate={openDuplicateEntry}
             onDelete={deleteEntry}
+            areasById={areasById}
           />
         </div>
       )}
@@ -803,6 +849,7 @@ export default function App({ session, onSignOut }) {
           defaultVendor={lastExpense?.vendor}
           onAttachReceipt={attachReceipt}
           onRemoveReceipt={removeReceipt}
+          areas={areas}
         />
       )}
 
@@ -822,6 +869,10 @@ export default function App({ session, onSignOut }) {
           onLinkClient={linkClientToProject}
           onCreateAndLinkClient={createAndLinkClient}
           onUnlinkClient={unlinkClient}
+          areas={areas}
+          onAddArea={addProjectArea}
+          onRenameArea={renameProjectArea}
+          onDeleteArea={deleteProjectArea}
         />
       )}
 

@@ -90,6 +90,29 @@ create table if not exists entries (
 
 create index if not exists entries_project_id_idx on entries (project_id);
 
+-- Expense categorization by area/room (e.g. "Μπάνιο", "Υπνοδωμάτιο",
+-- "Κουζίνα") — deliberately user-defined per project, not a fixed preset
+-- list: a custom-build project needs its own set of areas, and a fixed
+-- dropdown would be wrong for an irregular one. One row per area tag;
+-- entries.area_id below optionally points an entry at one. Created here,
+-- ahead of entries' own later ALTER, because that ALTER references this
+-- table — same "table has to exist before the FK that points at it"
+-- ordering as clients/client_id above.
+create table if not exists project_areas (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects (id) on delete cascade,
+  name text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists project_areas_project_id_idx on project_areas (project_id);
+
+-- Case-insensitive per project — "Μπάνιο" and "μπάνιο" are the same tag
+-- to anyone scanning badges or picking a filter, so silently allowing
+-- both would just split the same entries across two near-identical tags.
+create unique index if not exists project_areas_project_id_name_idx
+  on project_areas (project_id, lower(name));
+
 -- Payment status per entry — added after entries already existed in
 -- production, so this is an ALTER, not part of the CREATE TABLE above
 -- (which only runs for a brand-new database). "if not exists" / drop-then-
@@ -104,6 +127,13 @@ alter table entries add column if not exists payment_method text;
 alter table entries drop constraint if exists entries_payment_method_check;
 alter table entries add constraint entries_payment_method_check
   check (payment_method is null or payment_method in ('cash', 'transfer', 'card', 'check'));
+
+-- Optional area/room tag per entry (expense entries only — enforced by
+-- the app, the same way "income always gets category='Είσπραξη'" already
+-- is, not by a check constraint here). on delete set null, not cascade —
+-- deleting an area tag from a project must never touch, error on, or
+-- orphan the entries that had it: they just fall back to "no area".
+alter table entries add column if not exists area_id uuid references project_areas (id) on delete set null;
 
 -- A project owner can share view or edit access to a specific project with
 -- someone else by email — no separate invite/accept flow, no new auth
@@ -143,6 +173,7 @@ alter table projects enable row level security;
 alter table entries enable row level security;
 alter table project_collaborators enable row level security;
 alter table clients enable row level security;
+alter table project_areas enable row level security;
 
 -- ---------------------------------------------------------------------
 -- Helper functions — SECURITY DEFINER, so they bypass RLS *internally*
@@ -273,6 +304,35 @@ create policy "entries visible to project members" on entries
 -- new row's project_id has to pass this same check too.
 drop policy if exists "entries editable by owner and editors" on entries;
 create policy "entries editable by owner and editors" on entries
+  for all
+  using (
+    is_project_owner(project_id)
+    or my_project_role(project_id) = 'editor'
+  )
+  with check (
+    is_project_owner(project_id)
+    or my_project_role(project_id) = 'editor'
+  );
+
+-- ---------------------------------------------------------------------
+-- project_areas — same authorization shape as entries itself just above:
+-- visible to any project member, but only the owner or an editor
+-- collaborator can create/rename/delete a tag. Editors already manage
+-- entries directly, and managing the tags entries are organized by is
+-- the same kind of edit — unlike inviting collaborators or linking a
+-- client (both owner-only), this isn't membership/ownership control.
+-- ---------------------------------------------------------------------
+
+drop policy if exists "areas visible to project members" on project_areas;
+create policy "areas visible to project members" on project_areas
+  for select
+  using (
+    is_project_owner(project_id)
+    or my_project_role(project_id) is not null
+  );
+
+drop policy if exists "areas editable by owner and editors" on project_areas;
+create policy "areas editable by owner and editors" on project_areas
   for all
   using (
     is_project_owner(project_id)

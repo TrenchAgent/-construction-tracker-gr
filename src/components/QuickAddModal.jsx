@@ -35,6 +35,7 @@ const emptyForm = (defaultCategory, defaultVendor) => ({
   // move it forward (e.g. pending → paid) at any time.
   paymentStatus: 'pending',
   paymentMethod: '',
+  areaId: '',
 })
 
 // duplicateFrom: pre-fill a new entry from an existing one's values,
@@ -59,6 +60,7 @@ function duplicateForm(source) {
     date: new Date().toISOString().slice(0, 10),
     paymentStatus: source.paymentStatus,
     paymentMethod: source.paymentMethod || '',
+    areaId: isExpense ? source.areaId || '' : '',
   }
 }
 
@@ -77,6 +79,7 @@ export default function QuickAddModal({
   defaultVendor,
   onAttachReceipt,
   onRemoveReceipt,
+  areas,
 }) {
   const isEditing = Boolean(editingEntry)
   const [form, setForm] = useState(() => {
@@ -91,6 +94,7 @@ export default function QuickAddModal({
         date: editingEntry.date,
         paymentStatus: editingEntry.paymentStatus,
         paymentMethod: editingEntry.paymentMethod || '',
+        areaId: editingEntry.kind === 'expense' ? editingEntry.areaId || '' : '',
       }
     }
     if (duplicateFrom) return duplicateForm(duplicateFrom)
@@ -169,6 +173,10 @@ export default function QuickAddModal({
         date: form.date,
         paymentStatus: form.paymentStatus,
         paymentMethod: form.paymentMethod,
+        // Area is an expense-only concept (see the picker below) — same
+        // "switching kind shouldn't leave a stale value behind" reasoning
+        // as vat just above.
+        areaId: form.kind === 'expense' ? form.areaId || null : null,
       })
       onClose() // unmounts this component — don't touch state after this
     } catch (err) {
@@ -321,6 +329,24 @@ export default function QuickAddModal({
             />
           ))}
         </div>
+
+        {form.kind === 'expense' && areas.length > 0 && (
+          <>
+            <label className="block text-xs text-stone-500 mb-1">Περιοχή / χώρος (προαιρετικό)</label>
+            <select
+              className="w-full border border-stone-300 rounded-lg px-3 py-2 mb-4 text-sm bg-white"
+              value={form.areaId}
+              onChange={(e) => update({ areaId: e.target.value })}
+            >
+              <option value="">Χωρίς περιοχή</option>
+              {areas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
 
         {isEditing && (
           <div className="mb-4 pt-3 border-t border-stone-200">

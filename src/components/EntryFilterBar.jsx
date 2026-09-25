@@ -3,7 +3,7 @@ import { Search, SlidersHorizontal, X } from 'lucide-react'
 import { EXPENSE_CATEGORIES, PAYMENT_STATUSES, PAYMENT_STATUS_LABELS } from '../constants'
 import { EMPTY_FILTERS, isFilterActive } from '../lib/entryFilters'
 
-export default function EntryFilterBar({ filters, onChange }) {
+export default function EntryFilterBar({ filters, onChange, areas }) {
   const [expanded, setExpanded] = useState(false)
   const active = isFilterActive(filters)
 
@@ -69,6 +69,24 @@ export default function EntryFilterBar({ filters, onChange }) {
               ))}
             </select>
           </div>
+          {areas.length > 0 && (
+            // Only shown once the project actually has area tags defined —
+            // an "Όλες οι περιοχές" select with nothing real to pick from
+            // would just be clutter (same reasoning as ProjectMeta.jsx
+            // returning null when nothing's set).
+            <select
+              value={filters.area}
+              onChange={(e) => set({ area: e.target.value })}
+              className="w-full text-xs border border-stone-300 rounded-lg px-2 py-2 bg-white"
+            >
+              <option value="">Όλες οι περιοχές</option>
+              {areas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="block text-[11px] text-stone-500 mb-1">Από</label>

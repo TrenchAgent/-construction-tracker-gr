@@ -46,10 +46,15 @@ function formatAmount(amount) {
   return amount.toFixed(2).replace('.', ',')
 }
 
-export function entriesToCsv(entries) {
+// areasById: Map<id, {name}> — same lookup App.jsx already builds for
+// EntryList's badges, reused here rather than each entry carrying its own
+// resolved area name. Optional (defaults to empty) so this still works
+// if ever called without it.
+export function entriesToCsv(entries, areasById = new Map()) {
   const headers = [
     'Τύπος',
     'Κατηγορία',
+    'Περιοχή',
     'Προμηθευτής',
     'Σημείωση',
     'Ποσό',
@@ -62,6 +67,9 @@ export function entriesToCsv(entries) {
   const rows = entries.map((e) => [
     KIND_LABELS[e.kind] || e.kind,
     e.category,
+    // Optional, same reasoning as payment method below — '' means no area
+    // was assigned (or it's since been deleted), not a missing label.
+    (e.areaId && areasById.get(e.areaId)?.name) || '',
     e.vendor || '',
     e.note,
     formatAmount(e.amount),
