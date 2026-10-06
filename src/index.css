@@ -176,3 +176,85 @@ body {
     width: 0%;
   }
 }
+
+/* ---------------------------------------------------------------------
+   Motion — the "premium polish" pass. Three pieces: a shared fade/slide
+   entrance for cards (with a per-element stagger via the --i custom
+   property, so a fixed section order and a dynamic list can both use the
+   same class), a shimmering skeleton placeholder, and a progress-bar
+   fill-in. All three are real @keyframes animations, specifically so
+   prefers-reduced-motion can turn them off at the CSS level (an animation
+   with animation:none never runs, vs. a JS-driven animation which has to
+   remember to check the media query itself every time) — see each rule's
+   own override below. The one exception is the dashboard hero's big
+   figures counting up, which can't be pure CSS (see lib/useCountUp.js's
+   own comment on why) and checks prefers-reduced-motion itself in JS.
+   --------------------------------------------------------------------- */
+
+@keyframes fade-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* --i (set via inline style at the call site) staggers a fixed sequence
+   of sections (hero, then stat row, then...) or a dynamic list (entry
+   cards) identically — both just set a different index. Capped
+   implicitly by each caller never setting a very large --i; nothing here
+   enforces a max, since every real call site is a short, visible list. */
+.animate-in {
+  animation: fade-slide-up 350ms ease-out both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+@keyframes progress-fill-in {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+/* transform-origin left + scaleX, not an animated width — animating a
+   percentage width still needs the final width set via inline style
+   first (see DashboardSummary.jsx's BudgetHero), so this animates FROM
+   that already-correct width down to zero visually, not from a
+   different number. Keeps the bar's final filled fraction correct even
+   if the animation is skipped (reduced motion) or interrupted. */
+.animate-progress {
+  animation: progress-fill-in 600ms ease-out 150ms both;
+  transform-origin: left;
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--color-stone-200) 25%, var(--color-stone-100) 37%, var(--color-stone-200) 63%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in {
+    animation: none;
+  }
+  .animate-progress {
+    animation: none;
+  }
+  .skeleton {
+    animation: none;
+    /* Loses the sweep but keeps a visible two-tone placeholder — still
+       reads as "loading," just as a static block instead of a shimmer. */
+    background: var(--color-stone-200);
+  }
+}

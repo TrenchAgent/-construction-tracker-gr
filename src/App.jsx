@@ -10,6 +10,7 @@ import TimeBreakdown from './components/TimeBreakdown'
 import MonthlyTrendChart from './components/MonthlyTrendChart'
 import EntryList from './components/EntryList'
 import EntryFilterBar from './components/EntryFilterBar'
+import LoadingSkeleton from './components/LoadingSkeleton'
 import { EMPTY_FILTERS, applyEntryFilters, isFilterActive } from './lib/entryFilters'
 import NewProjectModal from './components/NewProjectModal'
 import QuickAddModal from './components/QuickAddModal'
@@ -704,11 +705,10 @@ export default function App({ session, onSignOut }) {
   const anyModalOpen = showNewProject || showQuickAdd || showProjectSettings || showAccount || showClientModal
 
   if (loading) {
-    return (
-      <div className="max-w-md mx-auto min-h-screen bg-stone-50 bg-blueprint flex items-center justify-center text-stone-400 text-sm">
-        Φόρτωση…
-      </div>
-    )
+    // A skeleton of the shape that's actually about to load, instead of
+    // a blank "Φόρτωση…" line — see LoadingSkeleton.jsx (shared with
+    // AuthGate.jsx's own session-check loading moment).
+    return <LoadingSkeleton />
   }
 
   return (
@@ -771,24 +771,25 @@ export default function App({ session, onSignOut }) {
         />
       ) : (
         <div className="p-4 pb-24">
-          <ProjectMeta
-            startDate={activeProject?.startDate}
-            targetCompletionDate={activeProject?.targetCompletionDate}
-          />
-
           <DashboardSummary
             income={income}
             expense={expense}
             profit={profit}
             pendingAmount={pendingAmount}
             budgetEstimate={activeProject?.budgetEstimate}
+            onOpenSettings={() => setShowProjectSettings(true)}
+          />
+
+          <ProjectMeta
+            startDate={activeProject?.startDate}
+            targetCompletionDate={activeProject?.targetCompletionDate}
           />
 
           <TimeBreakdown entries={visibleEntries} />
 
           <MonthlyTrendChart entries={visibleEntries} projectCreatedAt={activeProject?.createdAt} />
 
-          <h3 className="font-display font-bold text-lg text-stone-800 mb-2">Καταχωρήσεις</h3>
+          <h3 className="font-display font-bold text-lg text-stone-800 mb-4">Καταχωρήσεις</h3>
 
           {visibleEntries.length > 0 && (
             <EntryFilterBar filters={filters} onChange={setFilters} areas={areas} />
@@ -814,7 +815,7 @@ export default function App({ session, onSignOut }) {
         <button
           onClick={openQuickAdd}
           className={
-            'fixed right-5 bg-rust-700 text-white rounded-full w-14 h-14 shadow-button flex items-center justify-center transition-[bottom] duration-200 ' +
+            'fixed right-5 bg-rust-700 text-white rounded-full w-14 h-14 shadow-button flex items-center justify-center transition-[bottom,transform] duration-200 active:scale-90 ' +
             // A toast (either kind) sits in this exact corner and is
             // solid, not translucent — without this, it doesn't just
             // cover the FAB, it eats the tap: found by actually trying

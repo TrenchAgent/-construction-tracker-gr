@@ -1,6 +1,6 @@
 import { formatEUR } from '../lib/format'
 import { parseLocalDate } from '../lib/dates'
-import { EXPENSE_CATEGORIES, CATEGORY_SELECTED_STYLES } from '../constants'
+import { EXPENSE_CATEGORIES, CATEGORY_SELECTED_STYLES, CATEGORY_ICONS } from '../constants'
 
 // Greek month abbreviations via Intl, not a hand-written lookup table —
 // correct by construction, no extra bundle weight (built into the JS
@@ -51,29 +51,48 @@ function sumForMonth(entries, year, month, kind) {
 // the same solid fills OptionPill's selected state already uses for
 // these three categories — rather than inventing a new color per bar.
 function CategoryBreakdown({ entries }) {
+  // Zero-spend categories carry no information here (there's nothing to
+  // compare them against) — dropped entirely rather than shown as an
+  // empty 0,00 € bar.
   const totals = EXPENSE_CATEGORIES.map((category) => ({
     category,
     total: entries
       .filter((e) => e.kind === 'expense' && e.category === category)
       .reduce((s, e) => s + e.amount, 0),
-  }))
-  if (totals.every((t) => t.total === 0)) return null
+  })).filter((t) => t.total > 0)
+  if (totals.length === 0) return null
+
+  // Only one category has any spend yet — a bar chart comparing it to
+  // nothing else isn't a comparison, just a number with a decoration. A
+  // single line says the same thing without the empty theatrics.
+  if (totals.length === 1) {
+    const { category, total } = totals[0]
+    const Icon = CATEGORY_ICONS[category]
+    return (
+      <div className="bg-white rounded-2xl p-4 mb-6 shadow-card animate-in flex items-center gap-2" style={{ '--i': 4 }}>
+        {Icon && <Icon size={15} className="text-stone-400 shrink-0" />}
+        <span className="text-sm text-stone-600">{category}</span>
+        <span className="ml-auto font-display font-bold text-stone-800 tabular-nums">{formatEUR(total)}</span>
+      </div>
+    )
+  }
+
   const maxTotal = Math.max(1, ...totals.map((t) => t.total))
 
   return (
-    <div className="bg-white rounded-xl p-3 mb-5 shadow-card">
-      <h3 className="text-xs font-semibold text-stone-500 mb-3">Έξοδα ανά κατηγορία</h3>
-      <div className="space-y-2.5">
+    <div className="bg-white rounded-2xl p-4 mb-6 shadow-card animate-in" style={{ '--i': 4 }}>
+      <h3 className="text-sm font-semibold text-stone-500 mb-4">Έξοδα ανά κατηγορία</h3>
+      <div className="space-y-3">
         {totals.map(({ category, total }) => (
           <div key={category}>
-            <div className="flex items-center justify-between text-xs mb-1">
+            <div className="flex items-center justify-between text-sm mb-1">
               <span className="text-stone-600">{category}</span>
               <span className="font-display font-bold text-stone-800 tabular-nums">{formatEUR(total)}</span>
             </div>
             <div className="h-2 rounded-full bg-stone-100 overflow-hidden">
               <div
-                className={'h-full rounded-full ' + CATEGORY_SELECTED_STYLES[category]}
-                style={{ width: `${total > 0 ? Math.max(3, Math.round((total / maxTotal) * 100)) : 0}%` }}
+                className={'h-full rounded-full animate-progress ' + CATEGORY_SELECTED_STYLES[category]}
+                style={{ width: `${Math.max(3, Math.round((total / maxTotal) * 100))}%` }}
               />
             </div>
           </div>
@@ -114,10 +133,10 @@ export default function MonthlyTrendChart({ entries, projectCreatedAt }) {
   const maxValue = Math.max(1, ...bars.flatMap((b) => [b.income, b.expense]))
 
   return (
-    <div className="bg-white rounded-xl p-3 mb-5 shadow-card">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-semibold text-stone-500">Μηνιαία τάση</h3>
-        <div className="flex items-center gap-3 text-[10px] text-stone-500">
+    <div className="bg-white rounded-2xl p-4 mb-6 shadow-card animate-in" style={{ '--i': 4 }}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-stone-500">Μηνιαία τάση</h3>
+        <div className="flex items-center gap-3 text-sm text-stone-500">
           <span className="inline-flex items-center gap-1">
             <span className="w-2 h-2 rounded-sm bg-emerald-600 inline-block" />
             Έσοδα
@@ -152,7 +171,7 @@ export default function MonthlyTrendChart({ entries, projectCreatedAt }) {
 
       <div className="flex items-center justify-between gap-1 mt-1.5">
         {bars.map((b) => (
-          <div key={`${b.year}-${b.month}-label`} className="flex-1 text-center text-[10px] text-stone-400 capitalize">
+          <div key={`${b.year}-${b.month}-label`} className="flex-1 text-center text-sm text-stone-400 capitalize">
             {MONTH_FORMATTER.format(new Date(b.year, b.month, 1))}
           </div>
         ))}

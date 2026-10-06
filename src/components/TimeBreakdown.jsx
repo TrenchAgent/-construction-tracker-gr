@@ -19,8 +19,8 @@ function Column({ label, income, expense, isLast }) {
   const net = income - expense
   const isZero = net === 0
   return (
-    <div className={'flex-1 py-2.5 text-center' + (isLast ? '' : ' border-r border-stone-100')}>
-      <div className="text-[11px] text-stone-400 mb-0.5">{label}</div>
+    <div className={'flex-1 py-3 text-center' + (isLast ? '' : ' border-r border-stone-100')}>
+      <div className="text-sm text-stone-400 mb-0.5">{label}</div>
       <div
         className={
           'font-display font-bold text-sm tabular-nums ' +
@@ -65,7 +65,7 @@ export default function TimeBreakdown({ entries }) {
   const m = sums(thisMonth)
 
   return (
-    <div className="bg-white rounded-xl mb-5 shadow-card flex items-stretch">
+    <div className="bg-white rounded-2xl mb-6 shadow-card flex items-stretch animate-in" style={{ '--i': 3 }}>
       <Column label="Σήμερα" income={t.income} expense={t.expense} />
       <Column label="Εβδομάδα" income={w.income} expense={w.expense} />
       <Column label="Μήνας" income={m.income} expense={m.expense} isLast />

@@ -12,7 +12,7 @@ export default function ProjectMeta({ startDate, targetCompletionDate }) {
   if (!startDate && !targetCompletionDate) return null
 
   return (
-    <div className="bg-white rounded-xl p-3 mb-5 shadow-card flex items-center gap-1.5 text-sm text-stone-600">
+    <div className="bg-white rounded-2xl p-4 mb-6 shadow-card flex items-center gap-1.5 text-sm text-stone-600 animate-in" style={{ '--i': 2 }}>
       <Calendar size={14} className="text-stone-400 shrink-0" />
       <span className="truncate">
         {startDate ? formatDateGr(startDate) : '—'}

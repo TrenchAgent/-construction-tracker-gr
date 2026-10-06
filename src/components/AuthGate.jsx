@@ -4,6 +4,7 @@ import * as Sentry from '@sentry/react'
 import { RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import LoginScreen from './LoginScreen'
+import LoadingSkeleton from './LoadingSkeleton'
 
 // A browser only checks a service worker for updates on navigation by
 // default — for a PWA someone might leave open all day on a jobsite
@@ -105,11 +106,7 @@ export default function AuthGate({ children }) {
 
   let content
   if (session === undefined) {
-    content = (
-      <div className="max-w-md mx-auto min-h-screen bg-stone-50 bg-blueprint flex items-center justify-center text-stone-400 text-sm">
-        Φόρτωση…
-      </div>
-    )
+    content = <LoadingSkeleton />
   } else if (!session) {
     content = <LoginScreen />
   } else {

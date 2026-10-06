@@ -191,6 +191,12 @@ export default function QuickAddModal({
         className="bg-white w-full max-w-md rounded-t-2xl p-5 shadow-modal"
         style={{ maxHeight: '85vh', overflowY: 'auto' }}
       >
+        {/* Visual-only drag handle — the bottom-sheet affordance real
+            mobile sheets use, not a functional swipe-to-dismiss gesture
+            (that's a materially bigger addition than this polish pass's
+            "CSS only, no new dependency" scope covers; closing still
+            happens via the X button or backdrop tap, both already here). */}
+        <div className="w-10 h-1.5 rounded-full bg-stone-200 mx-auto mb-4" />
         <div className="flex items-center mb-4">
           <h3 className="font-display font-bold text-lg">
             {isEditing
