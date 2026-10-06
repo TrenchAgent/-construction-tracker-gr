@@ -772,7 +772,6 @@ export default function App({ session, onSignOut }) {
       ) : (
         <div className="p-4 pb-24">
           <ProjectMeta
-            budgetEstimate={activeProject?.budgetEstimate}
             startDate={activeProject?.startDate}
             targetCompletionDate={activeProject?.targetCompletionDate}
           />
@@ -782,6 +781,7 @@ export default function App({ session, onSignOut }) {
             expense={expense}
             profit={profit}
             pendingAmount={pendingAmount}
+            budgetEstimate={activeProject?.budgetEstimate}
           />
 
           <TimeBreakdown entries={visibleEntries} />

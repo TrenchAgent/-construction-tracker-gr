@@ -107,11 +107,14 @@ body {
 
 /* Faint architectural-grid texture for the page background — the
    construction-site-plan identity this app wants, applied as texture,
-   not decoration. Rust at 5% opacity over the stone-50 cream resolves
-   to a barely-there warm hairline, checked by actually rendering it
-   rather than trusting the number alone: strong enough that the
-   background reads as "considered" instead of flat, faint enough that
-   it's not competing with any real content sitting on top of it.
+   not decoration. Rust at 8% opacity over the stone-50 cream resolves to
+   a soft but clearly-there warm hairline — checked by actually rendering
+   it at normal (non-zoomed) phone viewing scale, not trusting the number
+   alone: 5% (this texture's original value) proved consistent but so
+   faint it read as "flat background," not "deliberate texture," once
+   the visual hierarchy pass this comment is from quieted every card
+   around it down to white/light surfaces — there was more open space for
+   the grid to actually be seen in, and at 5% it still didn't read.
    32px squares (not 8px) on purpose — a fine grid at this viewport
    width reads as noise/moiré, not a drafting grid; a wider spacing
    reads as intentional site-plan modules instead. Lives on the
@@ -121,8 +124,8 @@ body {
    behind it. */
 .bg-blueprint {
   background-image:
-    linear-gradient(rgba(138, 56, 32, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(138, 56, 32, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(138, 56, 32, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(138, 56, 32, 0.08) 1px, transparent 1px);
   background-size: 32px 32px;
 }
 

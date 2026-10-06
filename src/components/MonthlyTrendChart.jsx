@@ -1,5 +1,6 @@
 import { formatEUR } from '../lib/format'
 import { parseLocalDate } from '../lib/dates'
+import { EXPENSE_CATEGORIES, CATEGORY_SELECTED_STYLES } from '../constants'
 
 // Greek month abbreviations via Intl, not a hand-written lookup table —
 // correct by construction, no extra bundle weight (built into the JS
@@ -42,6 +43,46 @@ function sumForMonth(entries, year, month, kind) {
     .reduce((s, e) => s + e.amount, 0)
 }
 
+// Spend by category — the fallback shown instead of the monthly trend
+// chart until there are at least two actual months of data (see
+// MonthlyTrendChart below): a trend needs at least two points to show a
+// trend at all, and a single bar for "this month" is a figure the
+// Έξοδα card above already shows. Reuses CATEGORY_SELECTED_STYLES —
+// the same solid fills OptionPill's selected state already uses for
+// these three categories — rather than inventing a new color per bar.
+function CategoryBreakdown({ entries }) {
+  const totals = EXPENSE_CATEGORIES.map((category) => ({
+    category,
+    total: entries
+      .filter((e) => e.kind === 'expense' && e.category === category)
+      .reduce((s, e) => s + e.amount, 0),
+  }))
+  if (totals.every((t) => t.total === 0)) return null
+  const maxTotal = Math.max(1, ...totals.map((t) => t.total))
+
+  return (
+    <div className="bg-white rounded-xl p-3 mb-5 shadow-card">
+      <h3 className="text-xs font-semibold text-stone-500 mb-3">Έξοδα ανά κατηγορία</h3>
+      <div className="space-y-2.5">
+        {totals.map(({ category, total }) => (
+          <div key={category}>
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="text-stone-600">{category}</span>
+              <span className="font-display font-bold text-stone-800 tabular-nums">{formatEUR(total)}</span>
+            </div>
+            <div className="h-2 rounded-full bg-stone-100 overflow-hidden">
+              <div
+                className={'h-full rounded-full ' + CATEGORY_SELECTED_STYLES[category]}
+                style={{ width: `${total > 0 ? Math.max(3, Math.round((total / maxTotal) * 100)) : 0}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // A glance-value visual, deliberately — income vs. expense per month,
 // nothing computed on top of that. No averages, no month-over-month
 // change, no projected rate; see the project's own scope notes for why
@@ -55,6 +96,19 @@ export default function MonthlyTrendChart({ entries, projectCreatedAt }) {
     income: sumForMonth(entries, year, month, 'income'),
     expense: sumForMonth(entries, year, month, 'expense'),
   }))
+
+  // A trend chart with one real data point isn't a trend — show
+  // category spend instead until there's at least a second month to
+  // actually compare against. "Months with data," not "months in the
+  // window": the window always spans up to 6 calendar months regardless
+  // (see monthsToShow's own comment on why empty months stay visible
+  // once this chart does render), so counting the window itself would
+  // flip this on for a single-month-old project with a wide-enough date
+  // range, which isn't what "2+ months of data" means.
+  const monthsWithData = bars.filter((b) => b.income > 0 || b.expense > 0).length
+  if (monthsWithData < 2) {
+    return <CategoryBreakdown entries={entries} />
+  }
   // 1 as a floor, not 0 — avoids a divide-by-zero if the whole window
   // (a real calendar span, not just "months with data") turns out empty.
   const maxValue = Math.max(1, ...bars.flatMap((b) => [b.income, b.expense]))

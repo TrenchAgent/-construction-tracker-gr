@@ -10,27 +10,30 @@ function startOfWeek(date) {
   return start
 }
 
-function sumByKind(entries, kind) {
-  return entries.filter((e) => e.kind === kind).reduce((s, e) => s + e.amount, 0)
-}
-
-function Row({ label, entries }) {
-  const income = sumByKind(entries, 'income')
-  const expense = sumByKind(entries, 'expense')
+// One compact column per period, net amount only (not separate +/-
+// income/expense figures) — three periods × two signed figures each
+// doesn't fit one row at this screen width, and a glance-value summary
+// ("ahead or behind, roughly how much") is what this strip is actually
+// for; the full breakdown is one tap away in the entry list itself.
+function Column({ label, income, expense, isLast }) {
+  const net = income - expense
+  const isZero = net === 0
   return (
-    <div className="flex items-center justify-between py-2 text-sm">
-      <span className="text-stone-500">{label}</span>
-      <span className="flex gap-3 tabular-nums">
-        <span className="font-display text-emerald-800 font-bold">+{formatEUR(income)}</span>
-        <span className="font-display text-rose-800 font-bold">-{formatEUR(expense)}</span>
-      </span>
+    <div className={'flex-1 py-2.5 text-center' + (isLast ? '' : ' border-r border-stone-100')}>
+      <div className="text-[11px] text-stone-400 mb-0.5">{label}</div>
+      <div
+        className={
+          'font-display font-bold text-sm tabular-nums ' +
+          (isZero ? 'text-stone-400' : net > 0 ? 'text-emerald-800' : 'text-rose-800')
+        }
+      >
+        {isZero ? '—' : (net > 0 ? '+' : '') + formatEUR(net)}
+      </div>
     </div>
   )
 }
 
 export default function TimeBreakdown({ entries }) {
-  if (entries.length === 0) return null
-
   const now = new Date()
   const todayStr = toLocalDateString(now)
   const weekStart = startOfWeek(now)
@@ -46,11 +49,26 @@ export default function TimeBreakdown({ entries }) {
     return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
   })
 
+  // Nothing happened in any of the three windows — the strip would be
+  // three dashes in a row, which tells you nothing a blank space
+  // wouldn't also tell you. Hide rather than show that.
+  if (today.length === 0 && thisWeek.length === 0 && thisMonth.length === 0) return null
+
+  function sums(list) {
+    return {
+      income: list.filter((e) => e.kind === 'income').reduce((s, e) => s + e.amount, 0),
+      expense: list.filter((e) => e.kind === 'expense').reduce((s, e) => s + e.amount, 0),
+    }
+  }
+  const t = sums(today)
+  const w = sums(thisWeek)
+  const m = sums(thisMonth)
+
   return (
-    <div className="bg-white rounded-xl px-3 divide-y divide-stone-100 mb-5 shadow-card">
-      <Row label="Σήμερα" entries={today} />
-      <Row label="Αυτή την εβδομάδα" entries={thisWeek} />
-      <Row label="Αυτόν τον μήνα" entries={thisMonth} />
+    <div className="bg-white rounded-xl mb-5 shadow-card flex items-stretch">
+      <Column label="Σήμερα" income={t.income} expense={t.expense} />
+      <Column label="Εβδομάδα" income={w.income} expense={w.expense} />
+      <Column label="Μήνας" income={m.income} expense={m.expense} isLast />
     </div>
   )
 }
